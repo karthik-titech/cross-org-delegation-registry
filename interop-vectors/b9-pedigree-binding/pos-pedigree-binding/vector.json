@@ -1,0 +1,43 @@
+{
+  "attestation": {
+    "chain": {
+      "grants": [
+        {
+          "from": "org:alpha-corp:agent-A@v2",
+          "to": "org:beta-systems:agent-B@v1",
+          "scopes": [
+            "export:csv",
+            "read:records"
+          ],
+          "targets": [
+            "https://api.beta-systems.example/v1/data-export"
+          ],
+          "issued_at": "2026-07-18T10:00:00Z",
+          "expires_at": "2026-07-18T23:59:59Z",
+          "source": "grant:alpha-corp:2026-Q3-0042"
+        }
+      ]
+    },
+    "signed_at": "2026-07-18T10:00:00Z",
+    "kid": "kid-b9",
+    "signature": "4629a4068cc77e043ee7c69ee733099c5b166e60f5b028fe6428b68a9e30942f"
+  },
+  "expected": {
+    "divergences": [],
+    "diverges": false
+  },
+  "observed": [
+    {
+      "actor": "org:beta-systems:agent-B@v1",
+      "target": "https://api.beta-systems.example/v1/data-export",
+      "action": "delegation.api_call",
+      "scope": "export:csv",
+      "parent_actors": [
+        "org:alpha-corp:agent-A@v2",
+        "org:beta-systems:agent-B@v1"
+      ],
+      "observed_at": "2026-07-18T10:00:01Z"
+    }
+  ],
+  "subject_note": "action digests to shared subject_digest 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6 = SHA-256(JCS(action)) over the public B9 canonical action (see delegation.TestInteropSubjectDigest_B9)"
+}

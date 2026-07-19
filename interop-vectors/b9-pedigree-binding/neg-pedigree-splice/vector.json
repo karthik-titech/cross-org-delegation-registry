@@ -1,0 +1,58 @@
+{
+  "attestation": {
+    "chain": {
+      "grants": [
+        {
+          "from": "org:alpha-corp:agent-A@v2",
+          "to": "org:beta-systems:agent-B@v1",
+          "scopes": [
+            "export:csv",
+            "read:records"
+          ],
+          "targets": [
+            "https://api.beta-systems.example/v1/data-export"
+          ],
+          "issued_at": "2026-07-18T10:00:00Z",
+          "expires_at": "2026-07-18T23:59:59Z",
+          "source": "grant:alpha-corp:2026-Q3-0042"
+        }
+      ]
+    },
+    "signed_at": "2026-07-18T10:00:00Z",
+    "kid": "kid-b9",
+    "signature": "4629a4068cc77e043ee7c69ee733099c5b166e60f5b028fe6428b68a9e30942f"
+  },
+  "expected": {
+    "divergences": [
+      {
+        "class": "scope_creep",
+        "event": {
+          "actor": "org:beta-systems:agent-B@v1",
+          "target": "https://api.beta-systems.example/v1/data-export",
+          "action": "delegation.api_call",
+          "scope": "delete:records",
+          "parent_actors": [
+            "org:alpha-corp:agent-A@v2",
+            "org:beta-systems:agent-B@v1"
+          ],
+          "observed_at": "2026-07-18T10:00:01Z"
+        },
+        "reason": "actor \"org:beta-systems:agent-B@v1\" acted with scope \"delete:records\", not in its authorized scope-set (policy=0)"
+      }
+    ],
+    "diverges": true
+  },
+  "observed": [
+    {
+      "actor": "org:beta-systems:agent-B@v1",
+      "target": "https://api.beta-systems.example/v1/data-export",
+      "action": "delegation.api_call",
+      "scope": "delete:records",
+      "parent_actors": [
+        "org:alpha-corp:agent-A@v2",
+        "org:beta-systems:agent-B@v1"
+      ],
+      "observed_at": "2026-07-18T10:00:01Z"
+    }
+  ]
+}

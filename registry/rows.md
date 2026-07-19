@@ -43,8 +43,22 @@ fill it.
 - **dependency:** the originating organization's trust anchor (root only;
   self-certifying identifiers cover intermediate hops), inline conveyance of
   parent tokens, and a possession-proving transport for holder proof.
-- **evidence:** public test vectors NOT yet published. This cell is open and
-  says so. `evidence_type: none`.
+- **evidence:** partial. Synthetic B9 vectors at
+  [`interop-vectors/b9-pedigree-binding/`](../interop-vectors/b9-pedigree-binding/)
+  (IETF 126 Hackathon). Independently checkable by anyone: the shared B9
+  `subject_digest` recomputes from the published canonical action with any
+  RFC 8785 JCS implementation. Supplier-reported only: a supplier-run
+  private harness reported successful signing and verification of a
+  synthetic single-grant chain attestation (the published vectors do not
+  include the HMAC key or signing-input definition and are not
+  independently signature-verifiable), and a terminal action-scope negative
+  in which `delete:records` is rejected against the single grant's allowed
+  scope-set (`scope_creep`); this is not a grant-document or digest-binding
+  splice test. These vectors do NOT exercise the core C-002 per-hop
+  narrowing claim: the chain has one grant, so parent/child scope
+  subsetting, multi-hop verification, key rotation, and expiry are all
+  uncovered. Reproducibility boundary stated in the RUNKIT.
+  `evidence_type: local_harness`.
 - **gradient_position:** `{ "root": "general_infrastructure",
   "consequence_tier": "software", "sufficiency_bar": "none" }` (root anchor
   acquisition; a continuity mechanism to amortize the root pin across
