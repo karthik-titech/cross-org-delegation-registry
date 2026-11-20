@@ -8,8 +8,8 @@ event in this artifact is fictional.
 
 ## Reproducibility boundary (read first)
 
-These vectors are **supplier-run**: the harness executes inside the SURADAR
-maintainer's private checkout, and what is published here is the vectors plus
+These vectors are **supplier-run**: the harness executes in the
+supplier's private test environment, and what is published here is the vectors plus
 the supplier-reported expected output. Stated precisely:
 
 - **Independently checkable by anyone:** the `subject_digest` computation.
@@ -59,9 +59,8 @@ The B9 scenario's canonical action (authored in the AAC bundle,
 This is `SHA-256(JCS(action))` over the action above (RFC 8785 JCS; no
 absent-field normalization applies because the action has no null or empty
 members). **Check it yourself** with any JCS implementation; agreement does
-not depend on trusting either supplier. SURADAR additionally recomputes it
-with its own JCS implementation in a private test
-(`TestInteropSubjectDigest_B9`); that recompute matching is supplier-reported.
+not depend on trusting either supplier. The supplier also recomputed it
+with its own JCS implementation; that match is supplier-reported.
 
 ## What the vectors contain
 
@@ -70,25 +69,17 @@ with its own JCS implementation in a private test
 | `pos-pedigree-binding/vector.json` | A single-grant delegation chain (alpha-corp to beta-systems, scopes `read:records` + `export:csv`, target = the data-export endpoint) with its recorded HMAC attestation, plus an honest observed `export:csv` action | zero divergences |
 | `neg-pedigree-splice/vector.json` | The same chain and attestation, with the observed action's scope substituted to `delete:records` | rejected with divergence class `scope_creep` |
 
-## Supplier-run commands
+## Supplier-run results
 
-Run by the supplier in a private SURADAR checkout (`<glyphzero>` = checkout
-root); reproduced here for transparency of method, not as an outsider
-build path:
-
-```sh
-cd <glyphzero>/suradar
-go test ./delegation/ -run TestInteropSubjectDigest_B9 -v
-go test ./capability/ -run TestInteropB9_PedigreeHardening -v
-go test ./delegation/ ./capability/ -race
-```
+The supplier ran these vectors in its own private test environment. The
+commands are not published because that environment is not public.
 
 Supplier-reported output:
 
 ```text
-SURADAR JCS subject_digest = 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6
+JCS subject_digest = 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6
 positive: clean; splice: scope_creep caught
-all tests PASS, race detector clean
+all tests passed
 ```
 
 ## What the checks are, stated precisely so they are not overread
@@ -114,6 +105,6 @@ all tests PASS, race detector clean
 ## Synthetic key note
 
 The chain attestation was produced with a synthetic, throwaway HMAC test key
-that exists only in the supplier's private test code. It must not be reused,
+that exists only in the supplier's private test environment. It must not be reused,
 and it is deliberately not published; consequently the attestation signature
 is not third-party verifiable (see the reproducibility boundary above).

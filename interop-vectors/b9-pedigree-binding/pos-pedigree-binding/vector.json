@@ -39,5 +39,5 @@
       "observed_at": "2026-07-18T10:00:01Z"
     }
   ],
-  "subject_note": "action digests to shared subject_digest 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6 = SHA-256(JCS(action)) over the public B9 canonical action (see delegation.TestInteropSubjectDigest_B9)"
+  "subject_note": "action digests to shared subject_digest 0b4da06b84263c0ee02746e52f6893a40586c0563e01961314b1bddf74d72cb6 = SHA-256(JCS(action)) over the public B9 canonical action"
 }
