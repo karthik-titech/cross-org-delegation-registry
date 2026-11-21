@@ -1,4 +1,4 @@
-// Package pedigree verifies PEDIGREE -01 presentations under an illustrative fixture profile: WPT is assumed, Cedar decisions come from a fixture table, and Token Status List is not resolved.
+// Package pedigree verifies PEDIGREE -01 presentations under an illustrative fixture profile: WPT is assumed, Cedar decisions come from a fixture table, narrowing proofs are not checked, and Token Status List is not resolved.
 package pedigree
 
 import (
@@ -22,7 +22,7 @@ type WPTAssumption struct {
 	PresentationIndex int `json:"presentation_index"`
 	// HolderKey is the assumed signer of the proof.
 	HolderKey ed25519.PublicKey `json:"holder_key"`
-	// Fresh records whether the proof passed freshness and replay checks.
+	// Fresh records whether the proof is assumed to have passed freshness and replay checks.
 	Fresh bool `json:"fresh"`
 	// Covers lists the request fields covered by the proof.
 	Covers []string `json:"covers"`
