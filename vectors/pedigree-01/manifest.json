@@ -1,0 +1,176 @@
+{
+  "profile": "PEDIGREE -01 Ed25519 fixture profile",
+  "arguments_binding": "Illustrative profile: sha256 is base64url(SHA-256(JCS(arguments object))).",
+  "wpt": "Each presentation has its own assumed fresh WPT with the listed coverage and holder key.",
+  "policy": "Fixture lookups use pinned Cedar policy effects and request decisions.",
+  "ceiling_ref": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+  "ceiling": [
+    "permit(principal, action == Pedigree::Action::\"read\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+    "permit(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+    "forbid(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\") when { context.max_records \u003e 5000 };"
+  ],
+  "cases": [
+    {
+      "id": "valid-3-hop",
+      "file": "valid-3-hop.json",
+      "source": "appendix_a",
+      "digest": "sha256:738d55264544c390b5474ab94c0f4d7580c5de91d788dc1f1ca299c092906f9e"
+    },
+    {
+      "id": "parent-swap",
+      "file": "parent-swap.json",
+      "source": "appendix_a",
+      "digest": "sha256:aa34d71becd31b4855b093da33a3ed15d47470a27cb32a80d28eb87104532b6f"
+    },
+    {
+      "id": "reissued-parent",
+      "file": "reissued-parent.json",
+      "source": "appendix_a",
+      "digest": "sha256:b1b6cdedc5a609927eda198c657cc98748b60039d5b125d01ccdf207903ba94b"
+    },
+    {
+      "id": "depth-out-of-sequence",
+      "file": "depth-out-of-sequence.json",
+      "source": "appendix_a",
+      "digest": "sha256:7ebc3eef3d93334c1ce7d23185eea66232b6cd6c63957fc0cc25feca596eed40"
+    },
+    {
+      "id": "mandate-dropped",
+      "file": "mandate-dropped.json",
+      "source": "appendix_a",
+      "digest": "sha256:1d3e457af9e2f0f070565d881f3e46d2b8d944ac637a84adee156351f8c319b9"
+    },
+    {
+      "id": "principal-altered",
+      "file": "principal-altered.json",
+      "source": "appendix_a",
+      "digest": "sha256:91dd59975913d3f066c4f1751690390bb3f7e792c667c7135442d9392810b1a8"
+    },
+    {
+      "id": "grant-widened",
+      "file": "grant-widened.json",
+      "source": "appendix_a",
+      "digest": "sha256:ce66533ab3043d5ba230bb168e4beecbac379652715ec3960c230c8ee4c76698"
+    },
+    {
+      "id": "grant-new-resource",
+      "file": "grant-new-resource.json",
+      "source": "appendix_a",
+      "digest": "sha256:4557e81e348b162ea729f05b1d4ce916778a29f25a53647b7552b19fce9e8e0c"
+    },
+    {
+      "id": "no-invocation",
+      "file": "no-invocation.json",
+      "source": "appendix_a",
+      "digest": "sha256:9e811834ad1915de0c0fd995b796491340bce9f1fda785f941cf2a7d592432df"
+    },
+    {
+      "id": "token-as-invocation",
+      "file": "token-as-invocation.json",
+      "source": "appendix_a",
+      "digest": "sha256:b2102f366bd471f6ed564b6673df1bc5e2b15a4e7b17c1aa3c285e3801dc375a"
+    },
+    {
+      "id": "invocation-as-parent",
+      "file": "invocation-as-parent.json",
+      "source": "appendix_a",
+      "digest": "sha256:13838d2eb5ced48aa65f727488c8b8e0f0eac34ba967cc26b729cd1b081361f7"
+    },
+    {
+      "id": "invocation-other-leaf",
+      "file": "invocation-other-leaf.json",
+      "source": "appendix_a",
+      "digest": "sha256:94a7c1fdce98add456ff14f1b2cfa7a8748cd4a7cbc0ffecbfb39ae31b876ede"
+    },
+    {
+      "id": "invocation-replay",
+      "file": "invocation-replay.json",
+      "source": "appendix_a",
+      "digest": "sha256:66c6c0336aa407cf828e14e282219e8db2e44db93607ab0fc5edfdb557b90830"
+    },
+    {
+      "id": "args-altered",
+      "file": "args-altered.json",
+      "source": "appendix_a",
+      "digest": "sha256:4512fa3c23b1cd17445a9b758dfc3e39a8476175cd09f3edebedb45a42ec95dc"
+    },
+    {
+      "id": "invoked-action-not-granted",
+      "file": "invoked-action-not-granted.json",
+      "source": "appendix_a",
+      "digest": "sha256:c32766ec981d8ad9d35adfd9cf30c432b68032860fadc2718aff5879a292bd1d"
+    },
+    {
+      "id": "local-expired",
+      "file": "local-expired.json",
+      "source": "local",
+      "digest": "sha256:dda8fd0808497bf354d0e5a45434c6e75697237e23cca9affbceb146677c5f7b"
+    },
+    {
+      "id": "local-audience-mismatch",
+      "file": "local-audience-mismatch.json",
+      "source": "local",
+      "digest": "sha256:5e12e575b92452e83a7c1d6cc302671cd8b6a689449fec9eacff3b26e4293a14"
+    },
+    {
+      "id": "local-ceiling-unknown",
+      "file": "local-ceiling-unknown.json",
+      "source": "local",
+      "digest": "sha256:37348a08b47dd3983481198fbf00e7e21659008223e0d92534c55eac997ea786"
+    },
+    {
+      "id": "local-wrong-signer",
+      "file": "local-wrong-signer.json",
+      "source": "local",
+      "digest": "sha256:d9f2737ac0e84ef2906a75505b0f64d01ded657fd2ff89b1f06b913610a77d07"
+    },
+    {
+      "id": "local-service-denies-50000",
+      "file": "local-service-denies-50000.json",
+      "source": "local",
+      "digest": "sha256:573402999cfbb18b7c3c9a585b1e35db0dae81f2093eaeccec804373aa744cb1"
+    },
+    {
+      "id": "local-service-permits-500",
+      "file": "local-service-permits-500.json",
+      "source": "local",
+      "digest": "sha256:90c4dc629c2186d1a3f1348605005087484b2957d4184b80929bb828a6baf234"
+    },
+    {
+      "id": "local-status-present",
+      "file": "local-status-present.json",
+      "source": "local",
+      "digest": "sha256:d3056061007eb0357357d126327f7c224e42534a31b7c8210dec266a71b2e5be"
+    },
+    {
+      "id": "local-consent-missing",
+      "file": "local-consent-missing.json",
+      "source": "local",
+      "digest": "sha256:c90526ae8b2523d0b02878520979625534f3809b58ce02e6df1e88a455a00245"
+    },
+    {
+      "id": "local-consent-other-id",
+      "file": "local-consent-other-id.json",
+      "source": "local",
+      "digest": "sha256:e71a4d11db6e8bcfccc7327323bda762c510d3ff8ec8875f5e8c5bb219d8b8e3"
+    },
+    {
+      "id": "local-consent-revoked",
+      "file": "local-consent-revoked.json",
+      "source": "local",
+      "digest": "sha256:069ab88adb79556546c9a5c609d154c5b383998d688c43eda8d6b767170c8c1e"
+    },
+    {
+      "id": "local-holder-key-mismatch",
+      "file": "local-holder-key-mismatch.json",
+      "source": "local",
+      "digest": "sha256:436f42addfe49f39a16164ba935dd81b367e9964118ef7f629dfa96a29c2298c"
+    },
+    {
+      "id": "local-replay-state-unavailable",
+      "file": "local-replay-state-unavailable.json",
+      "source": "local",
+      "digest": "sha256:85474e498d2a72273e4cfa03c22b250734291f04f58ba6120454d36027259dff"
+    }
+  ]
+}
