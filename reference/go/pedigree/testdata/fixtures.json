@@ -1,0 +1,121 @@
+{
+  "resource": "https://records.example.net/v1/records",
+  "keys": [
+    {
+      "label": "TEST ONLY",
+      "index": 1,
+      "seed_hex": "625e08b87cda9c38cca4cf54e28ba5e4ebd3ff515de05c25c004b01b4213f320"
+    },
+    {
+      "label": "TEST ONLY",
+      "index": 2,
+      "seed_hex": "07d9c176bf0d5e15d96051cc779ac64b9338ae99e18b316ece9d40d927d6cac6"
+    },
+    {
+      "label": "TEST ONLY",
+      "index": 3,
+      "seed_hex": "9cf8dbc04d9441ae6d5adbe8ae2f414f05232808672115a81571194e2219876f"
+    },
+    {
+      "label": "TEST ONLY",
+      "index": 4,
+      "seed_hex": "9b7ad23f0abc998975836cea60ac39a450b8cb0bed5829d52a4c6fe4156ddaea"
+    },
+    {
+      "label": "TEST ONLY",
+      "index": 5,
+      "seed_hex": "ef8d94aed375823dbe4632c4ec5c16cf6099c749696e0c14daff3bf1da09417a"
+    }
+  ],
+  "mandate": [
+    "permit(principal, action == Pedigree::Action::\"read\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+    "permit(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");"
+  ],
+  "extra_permit": "permit(principal, action == Pedigree::Action::\"review\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+  "ceiling": [
+    "permit(principal, action == Pedigree::Action::\"read\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+    "permit(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");",
+    "forbid(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\") when { context.max_records > 5000 };"
+  ],
+  "ceiling_ref": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+  "effects": {
+    "permit(principal, action == Pedigree::Action::\"read\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");": "permit",
+    "permit(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");": "permit",
+    "forbid(principal, action == Pedigree::Action::\"export\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\") when { context.max_records > 5000 };": "forbid",
+    "permit(principal, action == Pedigree::Action::\"review\", resource == Pedigree::Resource::\"https://records.example.net/v1/records\");": "permit"
+  },
+  "decisions": [
+    {
+      "policy_id": "mandate",
+      "action": "read",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 500
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "mandate",
+      "action": "read",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 50000
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "mandate",
+      "action": "export",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 500
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "mandate",
+      "action": "export",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 50000
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+      "action": "read",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 500
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+      "action": "read",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 50000
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+      "action": "export",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 500
+      },
+      "decision": "permit"
+    },
+    {
+      "policy_id": "sha256:a7e47f27bc2dc4635102f427376220bbe5ae6e4fb622254734679ac8876262a3",
+      "action": "export",
+      "resource": "https://records.example.net/v1/records",
+      "args": {
+        "max_records": 50000
+      },
+      "decision": "deny"
+    }
+  ]
+}

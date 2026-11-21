@@ -1,0 +1,272 @@
+{
+  "cases": [
+    {
+      "id": "valid-3-hop",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "permit",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "parent-swap",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "par_hash_mismatch",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "reissued-parent",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "par_hash_mismatch",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "depth-out-of-sequence",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "linkage_invalid",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "mandate-dropped",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "mandate_not_narrower",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "principal-altered",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "principal_altered",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "grant-widened",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "scope_widened",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "grant-new-resource",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "scope_widened",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "no-invocation",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "invocation_invalid",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree"
+      ]
+    },
+    {
+      "id": "token-as-invocation",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "invocation_invalid",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "invocation-as-parent",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "malformed",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "invocation-other-leaf",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "invocation_invalid",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "invocation-replay",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "permit",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "invocation-replay",
+      "source": "appendix_a",
+      "presentation": 2,
+      "outcome": "invocation_replayed",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "args-altered",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "invocation_invalid",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "local-expired",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "expired",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "local-audience-mismatch",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "audience_mismatch",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture"
+      ]
+    },
+    {
+      "id": "local-ceiling-unknown",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "ceiling_unknown",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "local-wrong-signer",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "signature_invalid",
+      "trusted_inputs_used": []
+    },
+    {
+      "id": "local-service-denies-50000",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "ceiling_denied",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "local-service-permits-500",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "permit",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "invoked-action-not-granted",
+      "source": "appendix_a",
+      "presentation": 1,
+      "outcome": "scope_not_granted",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "local-status-present",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "status_unknown",
+      "trusted_inputs_used": [
+        "policy_fixture"
+      ]
+    },
+    {
+      "id": "local-consent-missing",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "status_unknown",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture"
+      ]
+    },
+    {
+      "id": "local-consent-other-id",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "status_unknown",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture"
+      ]
+    },
+    {
+      "id": "local-consent-revoked",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "revoked",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture"
+      ]
+    },
+    {
+      "id": "local-holder-key-mismatch",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "holder_binding_failed",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    },
+    {
+      "id": "local-replay-state-unavailable",
+      "source": "local",
+      "presentation": 1,
+      "outcome": "replay_unknown",
+      "trusted_inputs_used": [
+        "policy_fixture",
+        "consent_fixture",
+        "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation"
+      ]
+    }
+  ]
+}
