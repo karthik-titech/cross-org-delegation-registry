@@ -16,6 +16,8 @@ const claims = new Set([
 ]);
 const invocationClaims = ["iss", "aud", "jti", "iat", "exp", "tok", "action", "resource", "args"];
 const privateMembers = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
+const jwkStringMembers = ["kid", "alg", "use", "x5u", "x5t", "x5t#S256"];
+const jwkStringArrayMembers = ["key_ops", "x5c"];
 const object = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const has = Object.hasOwn;
 const text = (v) => typeof v === "string" && v.length > 0;
@@ -99,7 +101,9 @@ function parseChainToken(compact, index) {
   if (index > 0) {
     const { jwk } = header;
     requireShape(object(jwk) && jwk.kty === "OKP" && jwk.crv === "Ed25519" &&
-      !privateMembers.some((name) => has(jwk, name)));
+      !privateMembers.some((name) => has(jwk, name)) &&
+      jwkStringMembers.every((name) => !has(jwk, name) || typeof jwk[name] === "string") &&
+      jwkStringArrayMembers.every((name) => !has(jwk, name) || strings(jwk[name])));
     token.key = digestBytes(jwk.x);
     token.parentDigest = digestBytes(p.par_hash);
   } else {

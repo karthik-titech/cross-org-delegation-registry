@@ -181,7 +181,7 @@ test("B:verify step 1 checks every token and both JCS segments before signatures
   }
 });
 
-test("B:verify step 1 rejects private T_1 JWK members and allows unknown public members", () => {
+test("B:verify step 1 checks private and registered public T_1 JWK members", () => {
   const vector = JSON.parse(readFileSync(new URL("../../../vectors/pedigree-01/valid-3-hop.json", import.meta.url)));
   const { chain, invocation, args } = vector.presentations[0];
   const wpt = vector.wpt[0];
@@ -203,6 +203,25 @@ test("B:verify step 1 rejects private T_1 JWK members and allows unknown public 
     ["k with a null value", { k: null }, "malformed"],
     ["d alone", { d: keyByX.get(childHeader.jwk.x).d }, "malformed"],
     ["unknown member alone", extension, "permit"],
+    ["unknown numeric member", { extra: 10 }, "permit"],
+    ["numeric kid", { kid: 1 }, "malformed"],
+    ["null alg", { alg: null }, "malformed"],
+    ["object use", { use: {} }, "malformed"],
+    ["boolean x5u", { x5u: true }, "malformed"],
+    ["string key_ops", { key_ops: "sign" }, "malformed"],
+    ["mixed-type key_ops", { key_ops: ["sign", 1] }, "malformed"],
+    ["numeric x5c element", { x5c: [1] }, "malformed"],
+    ["numeric x5t", { x5t: 1 }, "malformed"],
+    ["numeric x5t#S256", { "x5t#S256": 1 }, "malformed"],
+    ["string kid", { kid: "" }, "permit"],
+    ["string alg differing from the header", { alg: "RS256" }, "permit"],
+    ["string use", { use: "sig" }, "permit"],
+    ["string x5u", { x5u: "https://example.test/cert.pem" }, "permit"],
+    ["string elements in key_ops", { key_ops: ["sign"] }, "permit"],
+    ["empty x5c", { x5c: [] }, "permit"],
+    ["string elements in x5c", { x5c: ["certificate"] }, "permit"],
+    ["string x5t", { x5t: "thumbprint" }, "permit"],
+    ["string x5t#S256", { "x5t#S256": "thumbprint" }, "permit"],
   ];
 
   for (const [name, members, outcome] of cases) {
