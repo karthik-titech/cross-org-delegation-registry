@@ -210,6 +210,11 @@ func parseInvocation(compact string) (compactJWS, invocation, bool) {
 
 func checkInvocation(p Presentation, leaf token, wpt WPTAssumption, cfg Config, at time.Time, used *inputUse) (invocation, []byte, string) {
 	var inv invocation
+	// A non-fresh assumption is refused before any label is recorded: the
+	// label states freshness, so it must not appear for a stale assumption.
+	if !wpt.Fresh {
+		return inv, nil, "holder_binding_failed"
+	}
 	coversPedigree := slices.Contains(wpt.Covers, "Pedigree")
 	coversInvocation := slices.Contains(wpt.Covers, "Pedigree-Invocation")
 	switch {
@@ -222,7 +227,7 @@ func checkInvocation(p Presentation, leaf token, wpt WPTAssumption, cfg Config, 
 	default:
 		used.record(wptLabelPrefix)
 	}
-	if !wpt.Fresh || !coversPedigree || thumbprint(wpt.HolderKey) != leaf.holder {
+	if !coversPedigree || thumbprint(wpt.HolderKey) != leaf.holder {
 		return inv, nil, "holder_binding_failed"
 	}
 	if p.Invocation == "" {
