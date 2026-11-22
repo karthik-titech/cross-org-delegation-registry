@@ -85,7 +85,7 @@ func readPublicJWK(value any) ed25519.PublicKey {
 			if _, ok := stringList(v); !ok {
 				return nil
 			}
-		default:
+		case "d", "p", "q", "dp", "dq", "qi", "oth", "k":
 			return nil
 		}
 	}

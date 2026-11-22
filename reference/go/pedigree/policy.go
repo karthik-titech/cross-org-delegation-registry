@@ -102,7 +102,7 @@ func (p FixturePolicies) decision(id string, inv invocation, args []byte) string
 		if row.PolicyID != id || row.Action != inv.action || row.Resource != inv.resource {
 			continue
 		}
-		rowArgs, err := serializeJCS(row.Args)
+		rowArgs, err := serializeArgsJCS(row.Args)
 		if err != nil || !bytes.Equal(rowArgs, args) {
 			continue
 		}

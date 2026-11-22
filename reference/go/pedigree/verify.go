@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	policyLabel  = "policy_fixture"
-	consentLabel = "consent_fixture"
-	wptLabel     = "wpt_assumed:fresh,covers=Pedigree"
-	fixtureStop  = "unsupported_fixture_policy"
+	policyLabel    = "policy_fixture"
+	consentLabel   = "consent_fixture"
+	wptLabelPrefix = "wpt_assumed:fresh,covers="
+	wptLabel       = wptLabelPrefix + "Pedigree"
+	fixtureStop    = "unsupported_fixture_policy"
 )
 
 type inputUse struct {
@@ -216,17 +217,25 @@ func parseInvocation(compact string) (compactJWS, invocation, bool) {
 
 func checkInvocation(p Presentation, leaf token, wpt WPTAssumption, cfg Config, at time.Time, used *inputUse) (invocation, []byte, string) {
 	var inv invocation
-	used.wpt = wptLabel
-	if p.Invocation != "" {
-		used.wpt += "+Pedigree-Invocation"
+	coversPedigree := slices.Contains(wpt.Covers, "Pedigree")
+	coversInvocation := slices.Contains(wpt.Covers, "Pedigree-Invocation")
+	switch {
+	case coversPedigree && coversInvocation:
+		used.wpt = wptLabel + "+Pedigree-Invocation"
+	case coversPedigree:
+		used.wpt = wptLabel
+	case coversInvocation:
+		used.wpt = wptLabelPrefix + "Pedigree-Invocation"
+	default:
+		used.wpt = wptLabelPrefix
 	}
-	if !wpt.Fresh || !slices.Contains(wpt.Covers, "Pedigree") || thumbprint(wpt.HolderKey) != leaf.holder {
+	if !wpt.Fresh || !coversPedigree || thumbprint(wpt.HolderKey) != leaf.holder {
 		return inv, nil, "holder_binding_failed"
 	}
 	if p.Invocation == "" {
 		return inv, nil, "invocation_invalid"
 	}
-	if !slices.Contains(wpt.Covers, "Pedigree-Invocation") {
+	if !coversInvocation {
 		return inv, nil, "holder_binding_failed"
 	}
 	j, inv, ok := parseInvocation(p.Invocation)
@@ -244,7 +253,7 @@ func checkInvocation(p Presentation, leaf token, wpt WPTAssumption, cfg Config, 
 	if outcome := recordInvocation(cfg.ReplayCache, inv); outcome != "" {
 		return inv, nil, outcome
 	}
-	args, err := serializeJCS(p.Args)
+	args, err := serializeArgsJCS(p.Args)
 	if p.Args == nil || err != nil || len(inv.binding) != 1 ||
 		!digestEqual(str(inv.binding, "sha256"), sha256URL(args)) {
 		return inv, nil, "invocation_invalid"

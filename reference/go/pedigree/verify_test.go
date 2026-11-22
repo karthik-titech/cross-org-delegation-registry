@@ -97,7 +97,7 @@ func TestVerifyVerificationOrder(t *testing.T) {
 		{"coverage before invocation parse", func(s *sample) {
 			s.p.Invocation = "broken"
 			s.trust.WPT.Covers = []string{"Pedigree"}
-		}, "holder_binding_failed", []string{policyLabel, consentLabel, wptLabel + "+Pedigree-Invocation"}},
+		}, "holder_binding_failed", []string{policyLabel, consentLabel, "wpt_assumed:fresh,covers=Pedigree"}},
 		{"replay before argument binding", func(s *sample) {
 			s.p.Args = object{"max_records": 501}
 			s.cfg.ReplayCache.Check(verifier, "invocation", instant.Add(time.Minute))

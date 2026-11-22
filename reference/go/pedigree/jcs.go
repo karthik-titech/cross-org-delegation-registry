@@ -21,13 +21,22 @@ var errJSON = errors.New("invalid JCS input")
 
 func serializeJCS(v any) ([]byte, error) {
 	var out bytes.Buffer
-	if err := writeJCS(&out, reflect.ValueOf(v), 0); err != nil {
+	if err := writeJCS(&out, reflect.ValueOf(v), 0, false); err != nil {
 		return nil, err
 	}
 	return out.Bytes(), nil
 }
 
-func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
+// serializeArgsJCS uses RFC 8785 binary64 rounding for every argument number.
+func serializeArgsJCS(v any) ([]byte, error) {
+	var out bytes.Buffer
+	if err := writeJCS(&out, reflect.ValueOf(v), 0, true); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+func writeJCS(out *bytes.Buffer, v reflect.Value, depth int, args bool) error {
 	if depth > maxJSONDepth {
 		return errJSON
 	}
@@ -36,9 +45,20 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
 		return nil
 	}
 	if v.Kind() == reflect.Interface {
-		return writeJCS(out, v.Elem(), depth)
+		return writeJCS(out, v.Elem(), depth, args)
 	}
 	if v.Type() == reflect.TypeOf(json.Number("")) {
+		if args {
+			s := v.String()
+			if !json.Valid([]byte(s)) {
+				return errJSON
+			}
+			n, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return errJSON
+			}
+			return writeNumber(out, n)
+		}
 		n, ok := parseJSONNumber(v.String())
 		if !ok {
 			return errJSON
@@ -54,13 +74,19 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
 		return writeNumber(out, v.Float())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		n := v.Int()
+		if args {
+			return writeNumber(out, float64(n))
+		}
 		if n > maxSafeInteger || n < -maxSafeInteger {
 			return errJSON
 		}
 		out.WriteString(strconv.FormatInt(n, 10))
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		n := v.Uint()
-		if n > maxSafeInteger {
+		if args {
+			return writeNumber(out, float64(n))
+		}
+		if v.Kind() == reflect.Uintptr || n > maxSafeInteger {
 			return errJSON
 		}
 		out.WriteString(strconv.FormatUint(n, 10))
@@ -72,7 +98,7 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
 			out.WriteString("null")
 			return nil
 		}
-		return writeObject(out, v, depth)
+		return writeObject(out, v, depth, args)
 	case reflect.Slice, reflect.Array:
 		if v.Kind() == reflect.Slice && v.IsNil() {
 			out.WriteString("null")
@@ -83,7 +109,7 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			if err := writeJCS(out, v.Index(i), depth+1); err != nil {
+			if err := writeJCS(out, v.Index(i), depth+1, args); err != nil {
 				return err
 			}
 		}
@@ -94,7 +120,7 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int) error {
 	return nil
 }
 
-func writeObject(out *bytes.Buffer, v reflect.Value, depth int) error {
+func writeObject(out *bytes.Buffer, v reflect.Value, depth int, args bool) error {
 	type member struct {
 		key   reflect.Value
 		order []uint16
@@ -116,7 +142,7 @@ func writeObject(out *bytes.Buffer, v reflect.Value, depth int) error {
 			return err
 		}
 		out.WriteByte(':')
-		if err := writeJCS(out, v.MapIndex(m.key), depth+1); err != nil {
+		if err := writeJCS(out, v.MapIndex(m.key), depth+1, args); err != nil {
 			return err
 		}
 	}
