@@ -65,15 +65,19 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 	if !slices.Contains(leaf.grants[inv.resource], inv.action) {
 		return "scope_not_granted"
 	}
+	used.record(policyLabel)
+	decisions, ok := validateDecisions(p.Decisions)
+	if !ok {
+		return fixtureStop
+	}
 	for _, t := range chain {
 		if t.mandate == nil {
 			continue
 		}
-		used.record(policyLabel)
 		if !containsAll(p.Mandate, t.mandate) || !containsAll(t.mandate, p.Mandate) {
 			return fixtureStop
 		}
-		switch p.decision("mandate", inv, args) {
+		switch decisions.lookup("mandate", inv, args) {
 		case "permit":
 		case fixtureStop:
 			return fixtureStop
@@ -81,7 +85,6 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 			return "mandate_denied"
 		}
 	}
-	used.record(policyLabel)
 	if leaf.ceiling != p.CeilingRef {
 		return fixtureStop
 	}
@@ -89,7 +92,7 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 	if err != nil || !bytes.Equal(ceiling, pinned) || ceilingDigest(ceiling) != leaf.ceiling {
 		return "ceiling_denied"
 	}
-	switch p.decision(leaf.ceiling, inv, args) {
+	switch decisions.lookup(leaf.ceiling, inv, args) {
 	case "permit":
 		return "permit"
 	case fixtureStop:
@@ -99,26 +102,36 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 	}
 }
 
-func (p FixturePolicies) decision(id string, inv invocation, args []byte) string {
-	var decision string
-	for _, row := range p.Decisions {
-		if row.PolicyID != id || row.Action != inv.action || row.Resource != inv.resource {
-			continue
+type decisionKey struct {
+	policyID, action, resource, args string
+}
+
+type decisionTable map[decisionKey]string
+
+func validateDecisions(rows []FixtureDecision) (decisionTable, bool) {
+	decisions := make(decisionTable, len(rows))
+	for _, row := range rows {
+		if row.Args == nil || (row.Decision != "permit" && row.Decision != "deny") {
+			return nil, false
 		}
 		rowArgs, err := serializeArgsJCS(row.Args)
-		if err != nil || !bytes.Equal(rowArgs, args) {
-			continue
+		if err != nil {
+			return nil, false
 		}
-		if row.Decision != "permit" || decision == "deny" {
-			decision = "deny"
-		} else {
-			decision = "permit"
+		key := decisionKey{row.PolicyID, row.Action, row.Resource, string(rowArgs)}
+		if prior, ok := decisions[key]; ok && prior != row.Decision {
+			return nil, false
 		}
+		decisions[key] = row.Decision
 	}
-	if decision == "" {
-		return fixtureStop
+	return decisions, true
+}
+
+func (d decisionTable) lookup(id string, inv invocation, args []byte) string {
+	if decision, ok := d[decisionKey{id, inv.action, inv.resource, string(args)}]; ok {
+		return decision
 	}
-	return decision
+	return fixtureStop
 }
 
 func ceilingDigest(data []byte) string {

@@ -50,7 +50,7 @@ type FixtureDecision struct {
 	Resource string
 	// Args is the argument object for the decision.
 	Args map[string]any
-	// Decision records the fixture evaluator's permit, deny or error.
+	// Decision records the fixture evaluator's permit or deny decision.
 	Decision string
 }
 

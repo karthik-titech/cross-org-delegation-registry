@@ -102,10 +102,17 @@ func TestVerifyVerificationOrder(t *testing.T) {
 			s.p.Args = object{"max_records": 501}
 			s.cfg.ReplayCache.Check(verifier, "invocation", instant.Add(time.Minute))
 		}, "invocation_replayed", []string{policyLabel, consentLabel, wptLabel + "+Pedigree-Invocation"}},
-		{"a mandate evaluation error denies", func(s *sample) {
+		{"invalid mandate decision stops fixture evaluation", func(s *sample) {
 			for i := range s.trust.Policies.Decisions {
 				if s.trust.Policies.Decisions[i].PolicyID == "mandate" {
 					s.trust.Policies.Decisions[i].Decision = "error"
+				}
+			}
+		}, fixtureStop, []string{policyLabel, consentLabel, wptLabel + "+Pedigree-Invocation"}},
+		{"valid mandate deny refuses the request", func(s *sample) {
+			for i := range s.trust.Policies.Decisions {
+				if s.trust.Policies.Decisions[i].PolicyID == "mandate" {
+					s.trust.Policies.Decisions[i].Decision = "deny"
 				}
 			}
 		}, "mandate_denied", []string{policyLabel, consentLabel, wptLabel + "+Pedigree-Invocation"}},

@@ -24,7 +24,7 @@ func (u *inputUse) record(label string) {
 }
 
 func (u inputUse) result(outcome string) Result {
-	return Result{Outcome: outcome, TrustedInputsUsed: u}
+	return Result{Outcome: outcome, TrustedInputsUsed: append([]string{}, u...)}
 }
 
 // Verify evaluates one presentation at the supplied instant. An
@@ -50,6 +50,20 @@ func Verify(p Presentation, t Trusted, cfg Config, at time.Time) Result {
 	}
 	if !verifyTime(chain, at) {
 		return used.result("expired")
+	}
+	refs := make([]string, 0, len(cfg.AcceptedCeilings))
+	for ref := range cfg.AcceptedCeilings {
+		refs = append(refs, ref)
+	}
+	slices.Sort(refs)
+	validCeilings := true
+	for _, ref := range refs {
+		if ceilingDigest(cfg.AcceptedCeilings[ref]) != ref {
+			validCeilings = false
+		}
+	}
+	if !validCeilings {
+		return used.result(fixtureStop)
 	}
 	for _, token := range chain {
 		if _, ok := cfg.AcceptedCeilings[token.ceiling]; !ok {

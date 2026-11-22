@@ -81,12 +81,12 @@ func writeJCS(out *bytes.Buffer, v reflect.Value, depth int, args bool) error {
 			return errJSON
 		}
 		out.WriteString(strconv.FormatInt(n, 10))
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		n := v.Uint()
 		if args {
 			return writeNumber(out, float64(n))
 		}
-		if v.Kind() == reflect.Uintptr || n > maxSafeInteger {
+		if n > maxSafeInteger {
 			return errJSON
 		}
 		out.WriteString(strconv.FormatUint(n, 10))

@@ -35,7 +35,6 @@ type cliResult struct {
 	Got               string   `json:"got"`
 	TrustedInputsUsed []string `json:"trusted_inputs_used"`
 	Status            string   `json:"status"`
-	FixtureRunnerStop bool     `json:"fixture_runner_stop,omitempty"`
 }
 
 // RunVectors verifies each presentation against the pinned outcomes and writes
@@ -179,7 +178,7 @@ func runVector(dir, id string, pins []pinnedResult, f fixtureSpec, encoder *json
 			status = "FAIL"
 			failed = true
 		}
-		r := cliResult{id, pin.Index, pin.Outcome, got.Outcome, got.TrustedInputsUsed, status, got.Outcome == fixtureStop}
+		r := cliResult{id, pin.Index, pin.Outcome, got.Outcome, got.TrustedInputsUsed, status}
 		if err := encoder.Encode(r); err != nil {
 			return err
 		}

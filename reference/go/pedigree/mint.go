@@ -279,15 +279,19 @@ func mintInvocation(f fixtureSpec, id string, leaf claims, leafDigest, otherLeaf
 		leafDigest = otherLeaf
 	}
 	args := claims{"max_records": count}
-	jcs, err := serializeJCS(args)
+	p := claims{
+		"iss": leaf["client_id"], "aud": leaf["aud"], "jti": jti, "iat": fixtureEpoch, "exp": exp,
+		"tok": leafDigest, "action": action, "resource": f.Resource, "args": mintArgsBinding(args),
+	}
+	return signFixture(4, claims{"typ": invocationType, "alg": ed25519Alg}, p), args
+}
+
+func mintArgsBinding(args claims) claims {
+	jcs, err := serializeArgsJCS(args)
 	if err != nil {
 		panic(err)
 	}
-	p := claims{
-		"iss": leaf["client_id"], "aud": leaf["aud"], "jti": jti, "iat": fixtureEpoch, "exp": exp,
-		"tok": leafDigest, "action": action, "resource": f.Resource, "args": claims{"sha256": sha256URL(jcs)},
-	}
-	return signFixture(4, claims{"typ": invocationType, "alg": ed25519Alg}, p), args
+	return claims{"sha256": sha256URL(jcs)}
 }
 
 var caseIDs = []string{
