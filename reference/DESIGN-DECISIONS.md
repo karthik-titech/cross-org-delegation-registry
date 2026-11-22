@@ -40,3 +40,18 @@ The plan went through eight revisions, then one amendment after code review. An 
 ## What this stage does not cover
 
 Token Status List resolution, real Workload Proof Token verification, real Cedar evaluation, narrowing proofs, completion blocks, the mapping from an ID-JAG to the root of a PEDIGREE chain, OAuth authorization_details narrowing, and access-token lifetime coupling. These are planned for later stages, together with a second, independently written verifier and a runner that checks the two agree on every case.
+
+## Changes after the second verifier
+
+Building an independent Node.js verifier, and checking both verifiers against private cases written from the draft text, found places where the Go verifier and the earlier rules needed to change. The published vector results did not change.
+
+| Change | Draft basis |
+|---|---|
+| Trusted inputs are listed in the order the verifier first used them, each once. On a chain with no mandate, the policy fixture is first read at step 11, so it is listed after consent and holder binding. This replaces the fixed order in v8 above. | Section 5.3 step 11; reporting rule of this suite |
+| The holder-binding label names the fields the assumption covers, not the fields present in the request. | Sections 6.3 and 6.4 |
+| Step 5 runs each check over the whole chain in the order the draft lists them: mandate effects, then grant coverage, then mandate narrowing. | Section 5.3 step 5 |
+| Unknown public members in a child token's `jwk` are ignored; private key members are refused. | RFC 7517 Section 4; Section 4.1 |
+| The integer range rule applies to token and invocation headers and payloads only, not to the request arguments, which are bound through JCS. | Sections 4.4 and 6.2; RFC 8785 |
+| An invocation counts as used once the single-use check passes, even if a later check refuses it. | Section 6.3 checks 5 and 6 |
+| The step 11 grant check runs before any read of the policy fixture. | Section 5.3 step 11 |
+

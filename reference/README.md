@@ -15,6 +15,22 @@ The verifier prints one JSON line per presentation with `expected`, `got`, `trus
 
 From `reference/go`, run `go test ./...` for the Go tests or `go run ./cmd/pedigree-vectors` to regenerate the vectors.
 
+## Second verifier (Node.js)
+
+A second, independent verifier is in `reference/node`. It uses only the Node.js standard library, so its Ed25519, JSON and base64 code differ from the Go verifier's. From the repository root:
+
+```sh
+node reference/node/pedigree-verify.mjs --dir vectors/pedigree-01
+```
+
+It prints the same JSON lines as the Go verifier and exits with status 0 when all presentations pass. Run `node --test reference/node/test/*.test.mjs` through a shell for its tests. It was tested on Node.js 25.9.0 with OpenSSL 3.6.2 and is written against Node.js 20 APIs; it has not been run on Node.js 20.
+
+The Node verifier was written from the draft text, this directory's documents and the published vectors, without access to the Go source. Both verifiers were produced with the same family of AI coding models, so agreement between them does not by itself rule out a shared misreading of the draft. As a control, additional private cases were written from the draft text alone before the Node verifier was built; both verifiers now give the same result as those cases on every presentation. The two verifiers give identical result lines on all 28 published presentations.
+
+### Arguments binding and large numbers
+
+The illustrative arguments binding hashes the RFC 8785 (JCS) form of the request arguments. JCS serializes every number through its IEEE 754 binary64 value, so two spellings that round to the same value bind the same way: for example `9007199254740993` and `9007199254740992`, or `0.50000000000000001` and `0.5`. A profile that needs exact large integers or exact decimals should carry them as strings.
+
 ## Coverage
 
 The suite exercises PEDIGREE -01 Section 5.3 steps 1 to 11 and the Section 6 invocation checks, including refusal of small-order Ed25519 keys. The policy evaluator is a fixture test double with pinned decisions for pinned Cedar policies.
