@@ -23,9 +23,9 @@ A second, independent verifier is in `reference/node`. It uses only the Node.js 
 node reference/node/pedigree-verify.mjs --dir vectors/pedigree-01
 ```
 
-It prints the same JSON lines as the Go verifier and exits with status 0 when all presentations pass. Run `node --test reference/node/test/*.test.mjs` through a shell for its tests. It was tested on Node.js 25.9.0 with OpenSSL 3.6.2 and is written against Node.js 20 APIs; it has not been run on Node.js 20.
+On the published vectors it prints the same JSON lines as the Go verifier. It exits with status 0 when all presentations pass. The Go runner adds a `fixture_runner_stop` member to a line whose outcome is `unsupported_fixture_policy`; the Node runner does not. No published presentation has that outcome. Run `node --test reference/node/test/*.test.mjs` through a shell for its tests. It was tested on Node.js 25.9.0 with OpenSSL 3.6.2 and is written against Node.js 20 APIs; it has not been run on Node.js 20.
 
-The Node verifier was written from the draft text, this directory's documents and the published vectors, without access to the Go source. Both verifiers were produced with the same family of AI coding models, so agreement between them does not by itself rule out a shared misreading of the draft. As a control, additional private cases were written from the draft text alone before the Node verifier was built; both verifiers now give the same result as those cases on every presentation. The two verifiers give identical result lines on all 28 published presentations.
+The Node verifier was written from the draft text, a written build specification, this README as first published, the vector format, the published vectors and fixture file, and the frozen tests in `reference/node/test`, without access to the Go source. Both verifiers were produced with the same family of AI coding models, so agreement between them does not by itself rule out a shared misreading of the draft. As a control, private cases were prepared before the Node build from the draft text and, where the draft is silent, this suite's own rules (the reporting labels among them). Disagreements found with these cases were settled by recorded rulings, which changed both verifiers; one expected label list was revised by such a ruling after the build began. Both verifiers match the final expected outcomes and labels on all 36 private presentations. The two verifiers give identical result lines on all 28 published presentations.
 
 ### Arguments binding and large numbers
 
@@ -37,7 +37,7 @@ The suite exercises PEDIGREE -01 Section 5.3 steps 1 to 11 and the Section 6 inv
 
 The suite leaves Token Status List resolution, real Workload Proof Token verification, real Cedar evaluation, narrowing proofs, completion blocks, ID-JAG root mapping, and OAuth `authorization_details` narrowing out of scope.
 
-All keys are **TEST ONLY**. Each Ed25519 seed is the SHA-256 hash of the published prefix `pedigree-01 test key ` (including its trailing space) followed by the decimal key index.
+All keys are **TEST ONLY**. Each published vector's Ed25519 seed is the SHA-256 hash of the published prefix `pedigree-01 test key ` (including its trailing space) followed by the decimal key index.
 
 The normative source is [draft-rampalli-pedigree-01](https://datatracker.ietf.org/doc/draft-rampalli-pedigree/01/).
 

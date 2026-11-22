@@ -306,6 +306,20 @@ test("B:verify step 10 checks WPT freshness and coverage before invocation", () 
   check("holder_binding_failed", allLabels.slice(0, 2), { changeInputs: (_p, t) => { delete t.wpt; } });
 });
 
+test("B:verify step 10 labels only the assumed WPT coverage in field order", () => {
+  const cases = [
+    [[], "holder_binding_failed", ""],
+    [["Pedigree-Invocation"], "holder_binding_failed", "Pedigree-Invocation"],
+    [["Pedigree-Invocation", "Pedigree", "Pedigree", "other"], "permit", "Pedigree+Pedigree-Invocation"],
+    [["Pedigree"], "holder_binding_failed", "Pedigree"],
+  ];
+  for (const [covers, outcome, labelCoverage] of cases) {
+    check(outcome, [...allLabels.slice(0, 2), "wpt_assumed:fresh,covers=" + labelCoverage], {
+      changeInputs: (_p, t) => { t.wpt.covers = covers; },
+    });
+  }
+});
+
 test("B:verify step 10 checks invocation format, signature, binding and lifetime before replay", () => {
   const noReplay = (_p, _t, c) => { c.replay.available = false; };
   check("invocation_invalid", allLabels, {

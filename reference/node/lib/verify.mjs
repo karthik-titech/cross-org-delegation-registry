@@ -191,11 +191,11 @@ function parseInvocation(compact) {
 
 function invocationCheck(presentation, wpt, config, now, leaf, used) {
   const { payload: p } = leaf;
-  const covers = Array.isArray(wpt?.covers) ? wpt.covers : [];
+  const assumedCovers = Array.isArray(wpt?.covers) ? wpt.covers : [];
+  const covers = ["Pedigree", "Pedigree-Invocation"].filter((field) => assumedCovers.includes(field));
   const coversInvocation = covers.includes("Pedigree-Invocation");
   if (wpt) {
-    used.push(coversInvocation ? "wpt_assumed:fresh,covers=Pedigree+Pedigree-Invocation" :
-      "wpt_assumed:fresh,covers=Pedigree");
+    used.push("wpt_assumed:fresh,covers=" + covers.join("+"));
   }
   let holderKey;
   try {

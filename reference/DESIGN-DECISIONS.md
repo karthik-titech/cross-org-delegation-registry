@@ -39,19 +39,19 @@ The plan went through eight revisions, then one amendment after code review. An 
 
 ## What this stage does not cover
 
-Token Status List resolution, real Workload Proof Token verification, real Cedar evaluation, narrowing proofs, completion blocks, the mapping from an ID-JAG to the root of a PEDIGREE chain, OAuth authorization_details narrowing, and access-token lifetime coupling. These are planned for later stages, together with a second, independently written verifier and a runner that checks the two agree on every case.
+Token Status List resolution, real Workload Proof Token verification, real Cedar evaluation, narrowing proofs, completion blocks, the mapping from an ID-JAG to the root of a PEDIGREE chain, OAuth authorization_details narrowing, and access-token lifetime coupling. These are planned for later stages, together with a runner that checks the two verifiers agree on every case. The second, independently written verifier is now in `reference/node` (see below).
 
 ## Changes after the second verifier
 
-Building an independent Node.js verifier, and checking both verifiers against private cases written from the draft text, found places where the Go verifier and the earlier rules needed to change. The published vector results did not change.
+Building an independent Node.js verifier, and checking both verifiers against private cases prepared from the draft text and this suite's own rules, found places where the Go verifier and the earlier rules needed to change. The published vector results did not change.
 
 | Change | Draft basis |
 |---|---|
-| Trusted inputs are listed in the order the verifier first used them, each once. On a chain with no mandate, the policy fixture is first read at step 11, so it is listed after consent and holder binding. This replaces the fixed order in v8 above. | Section 5.3 step 11; reporting rule of this suite |
-| The holder-binding label names the fields the assumption covers, not the fields present in the request. | Sections 6.3 and 6.4 |
+| Trusted inputs are listed in the order the verifier first used them, each once. On a chain with no mandate, the policy fixture is first read at step 11, and only if the step 11 grant check passes. It is then listed after consent and holder binding. This replaces the fixed order in v8 above. | Section 5.3 step 11; reporting rule of this suite |
+| The holder-binding label names only the fields the assumption covers. A field that is present in the request but not covered is not named. This replaces the per-request wording in v6 above. | Sections 6.4 and 11.2; reporting rule of this suite |
 | Step 5 runs each check over the whole chain in the order the draft lists them: mandate effects, then grant coverage, then mandate narrowing. | Section 5.3 step 5 |
 | Unknown public members in a child token's `jwk` are ignored; private key members are refused. | RFC 7517 Section 4; Section 4.1 |
-| The integer range rule applies to token and invocation headers and payloads only, not to the request arguments, which are bound through JCS. | Sections 4.4 and 6.2; RFC 8785 |
+| For the objects this suite verifies, the integer range rule applies to token headers and payloads and, through Section 6.1, to invocation headers and payloads. It does not apply to the request arguments, which are bound through JCS. Section 4.4 also covers completion blocks, which this stage leaves out. | Sections 4.4, 6.1 and 6.2; RFC 8785 |
 | An invocation counts as used once the single-use check passes, even if a later check refuses it. | Section 6.3 checks 5 and 6 |
-| The step 11 grant check runs before any read of the policy fixture. | Section 5.3 step 11 |
+| Within step 11, the grant check runs before the policy fixture is read. | Section 5.3 step 11 |
 
