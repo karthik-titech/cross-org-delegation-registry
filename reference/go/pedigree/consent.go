@@ -9,7 +9,7 @@ func checkStatus(chain []token, anchor string, answers []ConsentAnswer, at time.
 			return "status_unknown"
 		}
 	}
-	used.consent = true
+	used.record(consentLabel)
 	for _, id := range chain[0].consents {
 		found := false
 		for _, answer := range answers {

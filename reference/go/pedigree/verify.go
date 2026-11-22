@@ -15,29 +15,22 @@ const (
 	fixtureStop    = "unsupported_fixture_policy"
 )
 
-type inputUse struct {
-	policy, consent bool
-	wpt             string
+type inputUse []string
+
+func (u *inputUse) record(label string) {
+	if !slices.Contains(*u, label) {
+		*u = append(*u, label)
+	}
 }
 
 func (u inputUse) result(outcome string) Result {
-	inputs := make([]string, 0, 3)
-	if u.policy {
-		inputs = append(inputs, policyLabel)
-	}
-	if u.consent {
-		inputs = append(inputs, consentLabel)
-	}
-	if u.wpt != "" {
-		inputs = append(inputs, u.wpt)
-	}
-	return Result{Outcome: outcome, TrustedInputsUsed: inputs}
+	return Result{Outcome: outcome, TrustedInputsUsed: u}
 }
 
 // Verify evaluates one presentation at the supplied instant. An
 // unsupported_fixture_policy outcome is a fixture stop outside Section 5.6.
 func Verify(p Presentation, t Trusted, cfg Config, at time.Time) Result {
-	var used inputUse
+	used := make(inputUse, 0, 3)
 	chain, outcome := parseChain(p.Chain, cfg.MaxTokens, cfg.MaxBytes)
 	if outcome != "" {
 		return used.result(outcome)
@@ -221,13 +214,13 @@ func checkInvocation(p Presentation, leaf token, wpt WPTAssumption, cfg Config, 
 	coversInvocation := slices.Contains(wpt.Covers, "Pedigree-Invocation")
 	switch {
 	case coversPedigree && coversInvocation:
-		used.wpt = wptLabel + "+Pedigree-Invocation"
+		used.record(wptLabel + "+Pedigree-Invocation")
 	case coversPedigree:
-		used.wpt = wptLabel
+		used.record(wptLabel)
 	case coversInvocation:
-		used.wpt = wptLabelPrefix + "Pedigree-Invocation"
+		used.record(wptLabelPrefix + "Pedigree-Invocation")
 	default:
-		used.wpt = wptLabelPrefix
+		used.record(wptLabelPrefix)
 	}
 	if !wpt.Fresh || !coversPedigree || thumbprint(wpt.HolderKey) != leaf.holder {
 		return inv, nil, "holder_binding_failed"

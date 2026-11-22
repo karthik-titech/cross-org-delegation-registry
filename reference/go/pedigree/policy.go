@@ -10,7 +10,7 @@ import (
 func checkAttenuation(chain []token, policies FixturePolicies, used *inputUse) string {
 	for _, t := range chain {
 		for _, text := range t.mandate {
-			used.policy = true
+			used.record(policyLabel)
 			effect := policies.Effects[text]
 			if effect != "permit" && effect != "forbid" {
 				return fixtureStop
@@ -24,6 +24,9 @@ func checkAttenuation(chain []token, policies FixturePolicies, used *inputUse) s
 				return "scope_widened"
 			}
 		}
+	}
+	for i, child := range chain[1:] {
+		parent := chain[i]
 		if parent.mandate != nil && !mandateNarrows(parent.mandate, child.mandate, policies.Effects) {
 			return "mandate_not_narrower"
 		}
@@ -66,7 +69,7 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 		if t.mandate == nil {
 			continue
 		}
-		used.policy = true
+		used.record(policyLabel)
 		if !containsAll(p.Mandate, t.mandate) || !containsAll(t.mandate, p.Mandate) {
 			return fixtureStop
 		}
@@ -78,7 +81,7 @@ func decide(chain []token, inv invocation, args, ceiling []byte, p FixturePolici
 			return "mandate_denied"
 		}
 	}
-	used.policy = true
+	used.record(policyLabel)
 	if leaf.ceiling != p.CeilingRef {
 		return fixtureStop
 	}
