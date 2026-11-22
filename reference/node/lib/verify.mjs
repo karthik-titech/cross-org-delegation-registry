@@ -190,20 +190,20 @@ function parseInvocation(compact) {
 }
 
 function invocationCheck(presentation, wpt, config, now, leaf, used) {
+  if (wpt?.fresh !== true) return { failure: "holder_binding_failed" };
+
   const { payload: p } = leaf;
-  const assumedCovers = Array.isArray(wpt?.covers) ? wpt.covers : [];
+  const assumedCovers = Array.isArray(wpt.covers) ? wpt.covers : [];
   const covers = ["Pedigree", "Pedigree-Invocation"].filter((field) => assumedCovers.includes(field));
   const coversInvocation = covers.includes("Pedigree-Invocation");
-  if (wpt) {
-    used.push("wpt_assumed:fresh,covers=" + covers.join("+"));
-  }
+  used.push("wpt_assumed:fresh,covers=" + covers.join("+"));
   let holderKey;
   try {
-    holderKey = decodeStdB64(wpt?.holder_key);
+    holderKey = decodeStdB64(wpt.holder_key);
   } catch {
     return { failure: "holder_binding_failed" };
   }
-  if (wpt.fresh !== true || !covers.includes("Pedigree") || holderKey.length !== 32 ||
+  if (!covers.includes("Pedigree") || holderKey.length !== 32 ||
       okpThumbprint(encodeB64url(holderKey)) !== p.cnf.jkt) {
     return { failure: "holder_binding_failed" };
   }

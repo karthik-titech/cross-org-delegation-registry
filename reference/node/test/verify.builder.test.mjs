@@ -296,14 +296,24 @@ test("B:verify an invalid timestamp for a matching consent ID yields status_unkn
   }
 });
 
-test("B:verify step 10 checks WPT freshness and coverage before invocation", () => {
+test("B:verify step 10 labels WPT only when fresh is exactly true", () => {
+  const earlierLabels = allLabels.slice(0, 2);
+  for (const fresh of [false, "true", 1]) {
+    check("holder_binding_failed", earlierLabels, {
+      changeInputs: (_p, t) => { t.wpt.fresh = fresh; },
+    });
+  }
+  check("holder_binding_failed", earlierLabels, { changeInputs: (_p, t) => { delete t.wpt.fresh; } });
+  check("holder_binding_failed", earlierLabels, { changeInputs: (_p, t) => { delete t.wpt; } });
+  check("permit", allLabels);
+});
+
+test("B:verify step 10 checks WPT coverage before invocation", () => {
   const pedigreeOnly = [...allLabels.slice(0, 2), "wpt_assumed:fresh,covers=Pedigree"];
-  check("holder_binding_failed", allLabels, { changeInputs: (_p, t) => { t.wpt.fresh = false; } });
   check("holder_binding_failed", pedigreeOnly, { changeInputs: (_p, t) => { t.wpt.covers.pop(); } });
   check("invocation_invalid", pedigreeOnly, {
     changeInputs: (p, t) => { t.wpt.covers.pop(); p.invocation = ""; },
   });
-  check("holder_binding_failed", allLabels.slice(0, 2), { changeInputs: (_p, t) => { delete t.wpt; } });
 });
 
 test("B:verify step 10 labels only the assumed WPT coverage in field order", () => {

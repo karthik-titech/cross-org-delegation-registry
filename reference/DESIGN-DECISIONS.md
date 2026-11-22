@@ -4,7 +4,7 @@ This file explains why the PEDIGREE -01 reference verifier and its test vectors 
 
 ## Goals
 
-1. Anyone can clone this repository, run one command, and get byte-level vectors for PEDIGREE -01 together with the outcome a conforming verifier must return.
+1. Anyone can clone this repository, run one command, and get byte-level vectors for PEDIGREE -01 together with the outcome this suite expects for each published presentation. Each expected outcome holds for the published fixture inputs and this suite's profile. For example, `local-status-present` expects `status_unknown` because this suite has no status-list resolver. A conforming verifier with an authoritative status answer can reach a different outcome.
 2. The lead case is the one a delegation chain alone cannot answer: every hop is valid and the invocation is valid, yet the receiving service denies the action under its own policy (Section 7.2).
 3. Every assumption the verifier makes is printed next to its result, so a reader never mistakes a test assumption for a protocol guarantee.
 
@@ -12,7 +12,7 @@ This file explains why the PEDIGREE -01 reference verifier and its test vectors 
 
 | Decision | Reason |
 |---|---|
-| Clean-room implementation written from the public -01 text only | Readers can check every behavior against the draft, and no private code is involved. |
+| Clean-room implementation written from the public -01 text, a written build specification, and this suite's written reporting rules, fixtures and frozen tests | Readers can check every protocol behavior against the draft. Where the draft is silent, such as the reporting labels, this suite's own rules apply and are marked as such. No private code is involved. |
 | Go standard library only, offline | Anyone can run it without fetching dependencies. |
 | Ed25519 only | Section 4.1 makes Ed25519 mandatory to implement. |
 | Test keys only, derived from published seeds | Vectors must be reproducible, and no real key may appear in a public repository. |
@@ -49,6 +49,7 @@ Building an independent Node.js verifier, and checking both verifiers against pr
 |---|---|
 | Trusted inputs are listed in the order the verifier first used them, each once. On a chain with no mandate, the policy fixture is first read at step 11, and only if the step 11 grant check passes. It is then listed after consent and holder binding. This replaces the fixed order in v8 above. | Section 5.3 step 11; reporting rule of this suite |
 | The holder-binding label names only the fields the assumption covers. A field that is present in the request but not covered is not named. This replaces the per-request wording in v6 above. | Sections 6.4 and 11.2; reporting rule of this suite |
+| A holder-binding assumption that is not fresh is refused with `holder_binding_failed`. No holder-binding label is recorded for it, because the label states that the assumption is fresh. Labels recorded at earlier steps stay. A fresh assumption keeps the coverage-based label above. | Section 11.2; reporting rule of this suite |
 | Step 5 runs each check over the whole chain in the order the draft lists them: mandate effects, then grant coverage, then mandate narrowing. | Section 5.3 step 5 |
 | Unknown public members in a child token's `jwk` are ignored; private key members are refused. | RFC 7517 Section 4; Section 4.1 |
 | For the objects this suite verifies, the integer range rule applies to token headers and payloads and, through Section 6.1, to invocation headers and payloads. It does not apply to the request arguments, which are bound through JCS. Section 4.4 also covers completion blocks, which this stage leaves out. | Sections 4.4, 6.1 and 6.2; RFC 8785 |

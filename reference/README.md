@@ -46,4 +46,4 @@ The normative source is [draft-rampalli-pedigree-01](https://datatracker.ietf.or
 
 ## License
 
-[LICENSE-CODE](../LICENSE-CODE) (Apache-2.0) covers `reference/**` and `vectors/pedigree-01/**`. [LICENSE.md](../LICENSE.md) (CC-BY-4.0) covers the rest of the repository.
+[LICENSE-CODE](../LICENSE-CODE) (Apache-2.0) covers `reference/**` and `vectors/pedigree-01/**`. [LICENSE.md](../LICENSE.md) (CC-BY-4.0) covers the documentation and registry content in the rest of the repository, with one exception. The cited requirement text (R1-R9) and the claim taxonomy (C-IDs) are the work of their Internet-Draft authors. They are cited, not relicensed, and the IETF Trust and the respective drafts govern their terms.
