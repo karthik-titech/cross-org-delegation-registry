@@ -15,7 +15,7 @@ const claims = new Set([
   "consent_chain", "ceiling_ref", "completion_bindable", "status", "act",
 ]);
 const invocationClaims = ["iss", "aud", "jti", "iat", "exp", "tok", "action", "resource", "args"];
-const privateMembers = ["d", "p", "q", "dp", "dq", "qi", "oth"];
+const privateMembers = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
 const object = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const has = Object.hasOwn;
 const text = (v) => typeof v === "string" && v.length > 0;

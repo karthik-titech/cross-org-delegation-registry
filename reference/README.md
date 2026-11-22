@@ -11,7 +11,7 @@ From the repository root, run this command with Go 1.22 or later. The suite runs
 cd reference/go && go run ./cmd/pedigree-verify -dir ../../vectors/pedigree-01
 ```
 
-The verifier prints one JSON line per presentation with `expected`, `got`, `trusted_inputs_used`, and a `status` of `PASS` or `FAIL`. Each result reports the trusted fixture inputs used. The command exits with status 0 when all presentations pass.
+The verifier prints one JSON line per presentation with `expected`, `got`, `trusted_inputs_used`, and a `status` of `PASS` or `FAIL`. Each result lists this suite's labels for the trusted fixture inputs the verifier relied on; [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) states what the labels cover. The command exits with status 0 when all presentations pass.
 
 From `reference/go`, run `go test ./...` for the Go tests or `go run ./cmd/pedigree-vectors` to regenerate the vectors.
 

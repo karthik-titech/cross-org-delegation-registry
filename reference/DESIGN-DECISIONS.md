@@ -6,7 +6,7 @@ This file explains why the PEDIGREE -01 reference verifier and its test vectors 
 
 1. Anyone can clone this repository, run one command, and get byte-level vectors for PEDIGREE -01 together with the outcome this suite expects for each published presentation. Each expected outcome holds for the published fixture inputs and this suite's profile. For example, `local-status-present` expects `status_unknown` because this suite has no status-list resolver. A conforming verifier with an authoritative status answer can reach a different outcome.
 2. The lead case is the one a delegation chain alone cannot answer: every hop is valid and the invocation is valid, yet the receiving service denies the action under its own policy (Section 7.2).
-3. Every assumption the verifier makes is printed next to its result, so a reader never mistakes a test assumption for a protocol guarantee.
+3. Each result prints the trusted-input labels this suite defines (policy, consent and holder binding) for the inputs the verifier relied on, so a reader never mistakes a test assumption for a protocol guarantee. The labels do not list every input. By design, a refusal for a holder-binding assumption that is not fresh carries no holder-binding label (see "Changes after the second verifier").
 
 ## Standing decisions
 
@@ -17,7 +17,7 @@ This file explains why the PEDIGREE -01 reference verifier and its test vectors 
 | Ed25519 only | Section 4.1 makes Ed25519 mandatory to implement. |
 | Test keys only, derived from published seeds | Vectors must be reproducible, and no real key may appear in a public repository. |
 | Byte-level vectors | Appendix A of -01 lists test cases by name but includes no byte-level vectors. |
-| Trusted inputs are separate from the request | Holder binding (Section 11.2), consent status (Section 10.4) and policy decisions come from outside the request. Keeping them apart, and reporting them with each result, makes clear what was assumed. |
+| Trusted inputs are separate from the request | Holder binding (Section 11.2), consent status (Section 10.4) and policy decisions come from outside the request. Keeping them apart, and reporting them under this suite's labels with each result, makes clear what was assumed. |
 | Policy decisions come from a fixture test double | Real Cedar evaluation is planned for a later stage. Until then, the vectors pin a small set of Cedar policies with their known decisions, and any policy or request outside that set stops the run instead of passing. |
 | Arguments binding uses an illustrative profile | Section 6.2 leaves the construction to a profile. The profile used here is labeled illustrative, not a PEDIGREE requirement. |
 
@@ -51,8 +51,11 @@ Building an independent Node.js verifier, and checking both verifiers against pr
 | The holder-binding label names only the fields the assumption covers. A field that is present in the request but not covered is not named. This replaces the per-request wording in v6 above. | Sections 6.4 and 11.2; reporting rule of this suite |
 | A holder-binding assumption that is not fresh is refused with `holder_binding_failed`. No holder-binding label is recorded for it, because the label states that the assumption is fresh. Labels recorded at earlier steps stay. A fresh assumption keeps the coverage-based label above. | Section 11.2; reporting rule of this suite |
 | Step 5 runs each check over the whole chain in the order the draft lists them: mandate effects, then grant coverage, then mandate narrowing. | Section 5.3 step 5 |
-| Unknown public members in a child token's `jwk` are ignored; private key members are refused. | RFC 7517 Section 4; Section 4.1 |
+| Unknown public members in a child token's `jwk` are ignored. Private key members and the symmetric key member `k` are refused. | RFC 7517 Section 4; Section 4.1 |
 | For the objects this suite verifies, the integer range rule applies to token headers and payloads and, through Section 6.1, to invocation headers and payloads. It does not apply to the request arguments, which are bound through JCS. Section 4.4 also covers completion blocks, which this stage leaves out. | Sections 4.4, 6.1 and 6.2; RFC 8785 |
 | An invocation counts as used once the single-use check passes, even if a later check refuses it. | Section 6.3 checks 5 and 6 |
 | Within step 11, the grant check runs before the policy fixture is read. | Section 5.3 step 11 |
 
+## Known difference between the two verifiers
+
+The two verifiers differ on one point in a child token's `jwk`. The Go verifier checks the types of registered public members. For example, `kid` must be a string and `key_ops` must be an array of strings. It refuses a wrong type as `malformed`. The Node verifier ignores the values of these registered members. No published vector exercises this difference, so the published results are the same. Which behavior both verifiers should have is a later decision.

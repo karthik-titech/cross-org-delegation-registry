@@ -25,12 +25,16 @@ function sortedJson(value) {
   return JSON.stringify(value);
 }
 
-function testKey(byte) {
-  const privateKey = createPrivateKey({
-    key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), Buffer.alloc(32, byte)]),
+function privateKeyFromSeed(seed) {
+  return createPrivateKey({
+    key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), seed]),
     format: "der",
     type: "pkcs8",
   });
+}
+
+function testKey(byte) {
+  const privateKey = privateKeyFromSeed(Buffer.alloc(32, byte));
   const { x } = createPublicKey(privateKey).export({ format: "jwk" });
   const jwk = { crv: "Ed25519", kty: "OKP", x };
   return {
@@ -174,6 +178,58 @@ test("B:verify step 1 checks every token and both JCS segments before signatures
         p.chain[1] = segments.join(".");
       },
     });
+  }
+});
+
+test("B:verify step 1 rejects private T_1 JWK members and allows unknown public members", () => {
+  const vector = JSON.parse(readFileSync(new URL("../../../vectors/pedigree-01/valid-3-hop.json", import.meta.url)));
+  const { chain, invocation, args } = vector.presentations[0];
+  const wpt = vector.wpt[0];
+  const keyByX = new Map(vector.keys.map(({ label, seed_hex }) => {
+    assert.equal(label, "TEST ONLY");
+    const privateKey = privateKeyFromSeed(Buffer.from(seed_hex, "hex"));
+    const { x, d } = privateKey.export({ format: "jwk" });
+    return [x, { privateKey, d }];
+  }));
+  const holderKey = keyByX.get(b64(Buffer.from(wpt.holder_key, "base64")));
+  const parse = (token) => token.split(".").slice(0, 2)
+    .map((part) => JSON.parse(Buffer.from(part, "base64url")));
+  const [childHeader] = parse(chain[1]);
+  const symmetricKey = b64(Buffer.alloc(32));
+  const extension = { extra: "ignored" };
+  const cases = [
+    ["k alone", { k: symmetricKey }, "malformed"],
+    ["k beside an unknown member", { k: symmetricKey, ...extension }, "malformed"],
+    ["k with a null value", { k: null }, "malformed"],
+    ["d alone", { d: keyByX.get(childHeader.jwk.x).d }, "malformed"],
+    ["unknown member alone", extension, "permit"],
+  ];
+
+  for (const [name, members, outcome] of cases) {
+    const rebuilt = [chain[0]];
+    for (let i = 1; i < chain.length; i++) {
+      const [header, payload] = parse(chain[i]);
+      if (i === 1) Object.assign(header.jwk, members);
+      payload.par_hash = signingDigest(rebuilt[i - 1]);
+      rebuilt.push(compact(header, payload, keyByX.get(header.jwk.x)));
+    }
+    const [header, payload] = parse(invocation);
+    payload.tok = signingDigest(rebuilt.at(-1));
+    const result = verify(
+      { chain: rebuilt, invocation: compact(header, payload, holderKey), args },
+      { wpt, consent: vector.consent, policies: fixtures },
+      {
+        trustAnchors: vector.trust_anchors,
+        verifierIds: vector.verifier_ids,
+        ceilings: { [fixtures.ceiling_ref]: Buffer.from(sortedJson(fixtures.ceiling)) },
+        maxTokens: 8,
+        maxBytes: 262144,
+        maxInvocationLifetimeSeconds: 60,
+        replay: { available: vector.replay_available, seen: new Set() },
+      },
+      new Date(vector.at),
+    );
+    assert.deepEqual(result, { outcome, trustedInputsUsed: outcome === "permit" ? allLabels : [] }, name);
   }
 });
 
