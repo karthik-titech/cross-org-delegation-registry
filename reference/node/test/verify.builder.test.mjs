@@ -7,6 +7,7 @@ import { join } from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import { FixtureError, loadFixtures } from "../lib/fixtures.mjs";
 import { verify } from "../lib/verify.mjs";
 
@@ -110,7 +111,7 @@ function setup({ changeRoot, changeChild, changeInvocation, changeArguments, cha
   };
   const presentation = { chain: [rootToken, childToken], invocation: compact(invocationHeader, invocation, holder), args };
   changeInputs?.(presentation, trusted, config);
-  return { run: () => verify(presentation, trusted, config, at), presentation, trusted, config };
+  return { run: (instant = at) => verify(presentation, trusted, config, instant), presentation, trusted, config };
 }
 
 function check(outcome, labels, options) {
@@ -162,6 +163,33 @@ test("B:verify rejects missing and NaN limits before processing", () => {
   }
 });
 
+test("B:verify wraps a throwing maxBytes getter in TypeError", () => {
+  const { run, config } = setup();
+  const cause = new RangeError("Cannot read maxBytes");
+  Object.defineProperty(config, "maxBytes", {
+    get() { throw cause; },
+  });
+  assert.throws(run, (error) => error instanceof TypeError && error.cause === cause);
+});
+
+test("B:verify reads each limit once before processing the presentation", () => {
+  const { run, config, presentation } = setup();
+  const limits = ["maxTokens", "maxBytes", "maxInvocationLifetimeSeconds"];
+  const reads = [];
+  for (const name of limits) {
+    const value = config[name];
+    Object.defineProperty(config, name, {
+      get() { reads.push(name); return value; },
+    });
+  }
+  const chain = presentation.chain;
+  Object.defineProperty(presentation, "chain", {
+    get() { reads.push("chain"); return chain; },
+  });
+  assert.deepEqual(run(), { outcome: "permit", trustedInputsUsed: allLabels });
+  assert.deepEqual(reads, [...limits, "chain"]);
+});
+
 test("B:verify step 1 checks every token and both JCS segments before signatures", () => {
   check("malformed", [], { changeRoot: (p) => { p.grants[0].resource = "local"; } });
   check("malformed", [], { changeChild: (p) => { p.grants.push(p.grants[0]); } });
@@ -179,6 +207,18 @@ test("B:verify step 1 checks every token and both JCS segments before signatures
       },
     });
   }
+});
+
+test("B:verify rejects a fragment in a grant resource URI", () => {
+  check("malformed", [], {
+    changeRoot: (p) => { p.grants[0].resource = "https://records.example.net/data#frag"; },
+  });
+});
+
+test("B:verify rejects a fragment in an invocation resource URI", () => {
+  check("invocation_invalid", allLabels, {
+    changeInvocation: (p) => { p.resource = "https://records.example.net/data#frag"; },
+  });
 });
 
 test("B:verify step 1 checks private and registered public T_1 JWK members", () => {
@@ -298,6 +338,81 @@ test("B:verify steps 6 and 7 enforce time bounds and every ceiling reference", (
   });
 });
 
+test("B:verify treats fractional milliseconds from a Date-like instant as an invalid Date", () => {
+  const { run } = setup();
+  const invalid = run(new Date(NaN));
+  assert.deepEqual(invalid, { outcome: "expired", trustedInputsUsed: allLabels.slice(0, 1) });
+  assert.deepEqual(run({ getTime: () => 1.5 }), invalid);
+});
+
+const numericDateBoundary = 1700000000;
+const beforeBoundary = "2023-11-14T22:13:19.9999999Z";
+const afterBoundary = "2023-11-14T22:13:20.0000001Z";
+
+for (const [claim, before, after] of [
+  ["iat", "expired", "permit"],
+  ["nbf", "expired", "permit"],
+  ["exp", "permit", "expired"],
+]) {
+  test("B:verify compares token " + claim + " at 100 nanoseconds on either side", () => {
+    for (const [instant, outcome] of [[beforeBoundary, before], [afterBoundary, after]]) {
+      const { run } = setup({
+        changeRoot: (p) => {
+          p.iat = numericDateBoundary - 15;
+          p.exp = numericDateBoundary + 60;
+          p[claim] = numericDateBoundary;
+        },
+        changeInvocation: (p) => {
+          p.iat = numericDateBoundary - 15;
+          p.exp = claim === "exp" ? numericDateBoundary : numericDateBoundary + 30;
+        },
+        changeInputs: (_p, t) => { t.consent[0].valid_at = instant; },
+      });
+      const trustedInputsUsed = outcome === "permit" ? allLabels : allLabels.slice(0, 1);
+      assert.deepEqual(run(instant), { outcome, trustedInputsUsed }, instant);
+    }
+  });
+}
+
+test("B:verify compares the invocation window at 100 nanoseconds on either side", () => {
+  for (const [claim, before, after] of [
+    ["iat", "invocation_invalid", "permit"],
+    ["exp", "permit", "invocation_invalid"],
+  ]) {
+    for (const [instant, outcome] of [[beforeBoundary, before], [afterBoundary, after]]) {
+      const { run } = setup({
+        changeRoot: (p) => { p.iat = numericDateBoundary - 15; p.exp = numericDateBoundary + 60; },
+        changeInvocation: (p) => {
+          p.iat = numericDateBoundary - 15;
+          p.exp = numericDateBoundary + 30;
+          p[claim] = numericDateBoundary;
+        },
+        changeInputs: (_p, t) => { t.consent[0].valid_at = instant; },
+      });
+      assert.deepEqual(run(instant), { outcome, trustedInputsUsed: allLabels }, claim + " at " + instant);
+    }
+  }
+});
+
+test("B:verify truncates subnanosecond digits when comparing a fractional NumericDate", () => {
+  for (const [fraction, outcome] of [["0009765629", "expired"], ["0009765630", "permit"]]) {
+    const instant = "2023-11-14T22:13:20." + fraction + "Z";
+    const { run } = setup({
+      changeRoot: (p) => {
+        p.iat = numericDateBoundary + 1 / 1024;
+        p.exp = numericDateBoundary + 60;
+      },
+      changeInvocation: (p) => {
+        p.iat = numericDateBoundary - 15;
+        p.exp = numericDateBoundary + 30;
+      },
+      changeInputs: (_p, t) => { t.consent[0].valid_at = instant; },
+    });
+    const trustedInputsUsed = outcome === "permit" ? allLabels : allLabels.slice(0, 1);
+    assert.deepEqual(run(instant), { outcome, trustedInputsUsed }, instant);
+  }
+});
+
 test("B:verify rejects a ceiling map entry whose bytes do not hash to its key", () => {
   check("unsupported_fixture_policy", allLabels.slice(0, 1), {
     changeInputs: (_p, _t, c) => { c.ceilings["sha256:" + "0".repeat(64)] = Buffer.from("[]"); },
@@ -345,6 +460,60 @@ test("B:verify a matching revoked consent answer overrides an active answer in e
       });
     }
   }
+});
+
+test("B:verify accepts consent answers parsed in another realm", () => {
+  for (const active of [true, false]) {
+    const changeInputs = (_p, t) => { t.consent[0].active = active; };
+    const sameRealm = setup({ changeInputs });
+    const otherRealm = setup({ changeInputs });
+    const json = JSON.stringify(sameRealm.trusted.consent);
+    otherRealm.trusted.consent = runInNewContext("JSON.parse(json)", { json });
+    assert.deepEqual(otherRealm.run(), sameRealm.run());
+  }
+});
+
+for (const [kind, entry] of [["null", null], ["string", "consent"], ["array", []]]) {
+  test("B:verify refuses consent entries of type " + kind + " even alongside an active match", () => {
+    check("status_unknown", allLabels.slice(0, 2), {
+      changeInputs: (_p, t) => { t.consent.push(entry); },
+    });
+  });
+}
+
+test("B:verify requires a boolean active value on every matching consent answer", () => {
+  for (const value of [0, "false", null, undefined]) {
+    check("status_unknown", allLabels.slice(0, 2), {
+      changeInputs: (_p, t) => {
+        const match = { ...t.consent[0], active: value };
+        if (value === undefined) delete match.active;
+        t.consent.push(match);
+      },
+    });
+  }
+});
+
+test("B:verify maps throwing caller getters to the check that reads them", () => {
+  const failRead = (target, key) => {
+    Object.defineProperty(target, key, {
+      get() { throw new Error("Cannot read " + key); },
+    });
+  };
+  check("malformed", [], { changeInputs: (p) => failRead(p, "chain") });
+  check("unsupported_fixture_policy", allLabels.slice(0, 1), {
+    changeInputs: (_p, t) => failRead(t, "policies"),
+  });
+  check("status_unknown", allLabels.slice(0, 2), {
+    changeInputs: (_p, t) => failRead(t, "consent"),
+  });
+  check("holder_binding_failed", allLabels.slice(0, 2), {
+    changeInputs: (_p, t) => failRead(t, "wpt"),
+  });
+  check("invocation_invalid", allLabels, { changeInputs: (p) => failRead(p, "invocation") });
+  check("unsupported_fixture_policy", [...allLabels.slice(1), "policy_fixture"], {
+    changeChild: (p) => { delete p.mandate; },
+    changeInputs: (_p, t) => failRead(t, "policies"),
+  });
 });
 
 test("B:verify a sub-millisecond consent instant never matches a whole second", () => {
@@ -435,6 +604,58 @@ test("B:verify step 10 records the invocation before arguments binding for its a
     changeInputs: (_p, _t, c) => { c.verifierIds.push("other"); c.replay = config.replay; },
   });
   assert.equal(fixture.run().outcome, "permit");
+});
+
+for (const method of ["add", "has"]) {
+  test("B:verify reports replay_unknown without recording when seen." + method + " throws", () => {
+    const { run, config } = setup();
+    const seen = config.replay.seen;
+    seen.add("existing");
+    seen[method] = (key) => {
+      Set.prototype.add.call(seen, key);
+      throw new Error("Replay state failure");
+    };
+    assert.deepEqual(run(), { outcome: "replay_unknown", trustedInputsUsed: allLabels });
+    assert.deepEqual([...seen], ["existing"]);
+  });
+}
+
+test("B:verify reports replay_unknown for unusable replay sets", () => {
+  class ReplaySet extends Set {}
+  const subclass = new ReplaySet();
+  const ownAdd = Object.assign(new Set(), { add: Set.prototype.add });
+  const proxyTarget = new Set();
+  const proxy = new Proxy(proxyTarget, {});
+  const plain = {};
+  for (const [seen, backingSet] of [
+    [subclass, subclass], [ownAdd, ownAdd], [proxy, proxyTarget], [plain, null], [null, null],
+  ]) {
+    check("replay_unknown", allLabels, { changeInputs: (_p, _t, c) => { c.replay.seen = seen; } });
+    if (backingSet) assert.equal(backingSet.size, 0);
+  }
+  assert.deepEqual(plain, {});
+
+  const { run, config } = setup();
+  assert.deepEqual(run(), { outcome: "permit", trustedInputsUsed: allLabels });
+  assert.equal(config.replay.seen.size, 1);
+});
+
+test("B:verify refuses a hostile replay recorder before it can erase another invocation", () => {
+  const first = setup();
+  const seen = first.config.replay.seen;
+  assert.deepEqual(first.run(), { outcome: "permit", trustedInputsUsed: allLabels });
+  const second = setup({
+    changeInvocation: (p) => { p.jti = "second-invocation"; },
+    changeInputs: (_p, _t, c) => { c.replay.seen = seen; },
+  });
+  seen.add = () => {
+    seen.clear();
+    throw new Error("Replay state failure");
+  };
+  assert.deepEqual(second.run(), { outcome: "replay_unknown", trustedInputsUsed: allLabels });
+  delete seen.add;
+  assert.deepEqual(first.run(), { outcome: "invocation_replayed", trustedInputsUsed: allLabels });
+  assert.equal(seen.size, 1);
 });
 
 test("B:verify retains a replay record after a step 11 denial", () => {

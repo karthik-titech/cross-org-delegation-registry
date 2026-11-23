@@ -20,6 +20,9 @@ const jwkStringMembers = ["kid", "alg", "use", "x5u", "x5t", "x5t#S256"];
 const jwkStringArrayMembers = ["key_ops", "x5c"];
 const object = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const has = Object.hasOwn;
+const setHas = Set.prototype.has;
+const setAdd = Set.prototype.add;
+const replayMethods = ["has", "add", "delete", "clear"];
 const text = (v) => typeof v === "string" && v.length > 0;
 const strings = (v) => Array.isArray(v) && v.every((item) => typeof item === "string");
 const nonemptyStrings = (v) => strings(v) && v.length > 0;
@@ -45,13 +48,13 @@ function digestBytes(value) {
 }
 
 function absoluteUri(value) {
-  // RFC 3986 syntax. Compare the original spelling wherever the URI is used.
-  if (!text(value) || /[^A-Za-z0-9:/?#\[\]@!$&'()*+,;=._~%-]/.test(value) ||
+  // RFC 3986 Section 4.3. Compare the original spelling wherever the URI is used.
+  if (!text(value) || /[^A-Za-z0-9:/?\[\]@!$&'()*+,;=._~%-]/.test(value) ||
       /%(?![0-9A-Fa-f]{2})/.test(value)) return false;
-  const uri = /^[A-Za-z][A-Za-z0-9+.-]*:([^?#]*)(?:\?([^#]*))?(?:#([^#]*))?$/.exec(value);
+  const uri = /^[A-Za-z][A-Za-z0-9+.-]*:([^?]*)(?:\?(.*))?$/.exec(value);
   if (!uri) return false;
-  const [, hierPart, query = "", fragment = ""] = uri;
-  if (/[\[\]]/.test(query + fragment)) return false;
+  const [, hierPart, query = ""] = uri;
+  if (/[\[\]]/.test(query)) return false;
   if (!hierPart.startsWith("//")) return !/[\[\]]/.test(hierPart);
   const authorityEnd = hierPart.indexOf("/", 2);
   const authority = hierPart.slice(2, authorityEnd < 0 ? undefined : authorityEnd);
@@ -142,12 +145,21 @@ function validSignature(token, key) {
   return token.header.alg === "Ed25519" && verifyEd25519(key, token.input, token.sig).ok;
 }
 
+function compareNumericDate(now, date) {
+  const whole = Math.floor(date);
+  const seconds = BigInt(whole);
+  if (now.seconds < seconds) return -1;
+  if (now.seconds > seconds) return 1;
+  return now.fraction - (date - whole);
+}
+
 function atInstant(p, now) {
-  return p.iat <= now && now < p.exp && (!has(p, "nbf") || p.nbf <= now);
+  return compareNumericDate(now, p.iat) >= 0 && compareNumericDate(now, p.exp) < 0 &&
+    (!has(p, "nbf") || compareNumericDate(now, p.nbf) >= 0);
 }
 
 function dateInstant(milliseconds) {
-  if (!Number.isFinite(milliseconds)) return null;
+  if (!Number.isInteger(milliseconds)) return null;
   const elapsed = BigInt(milliseconds);
   const withinSecond = ((elapsed % 1000n) + 1000n) % 1000n;
   return {
@@ -193,52 +205,70 @@ function parseInvocation(compact) {
   return token;
 }
 
-function invocationCheck(presentation, wpt, config, now, leaf, used) {
-  if (wpt?.fresh !== true) return { failure: "holder_binding_failed" };
+function recordInvocation(config, key) {
+  try {
+    const replay = config.replay;
+    if (replay?.available !== true) return "replay_unknown";
+    const seen = replay.seen;
+    if (!types.isSet(seen) || types.isProxy(seen) || Object.getPrototypeOf(seen) !== Set.prototype ||
+        replayMethods.some((name) => has(seen, name))) {
+      return "replay_unknown";
+    }
+    if (setHas.call(seen, key)) return "invocation_replayed";
+    setAdd.call(seen, key);
+  } catch {
+    return "replay_unknown";
+  }
+}
 
+function invocationCheck(presentation, trusted, config, maxLifetime, now, leaf, used) {
   const { payload: p } = leaf;
-  const assumedCovers = Array.isArray(wpt.covers) ? wpt.covers : [];
-  const covers = ["Pedigree", "Pedigree-Invocation"].filter((field) => assumedCovers.includes(field));
-  const coversInvocation = covers.includes("Pedigree-Invocation");
-  used.push("wpt_assumed:fresh,covers=" + covers.join("+"));
+  const bindingFailed = { failure: "holder_binding_failed" };
+  let coversInvocation;
   let holderKey;
   try {
+    const wpt = trusted?.wpt;
+    if (wpt?.fresh !== true) return bindingFailed;
+    const assumedCovers = wpt.covers;
+    const covers = Array.isArray(assumedCovers)
+      ? ["Pedigree", "Pedigree-Invocation"].filter((field) => assumedCovers.includes(field))
+      : [];
+    coversInvocation = covers.includes("Pedigree-Invocation");
+    used.push("wpt_assumed:fresh,covers=" + covers.join("+"));
     holderKey = decodeStdB64(wpt.holder_key);
+    if (!covers.includes("Pedigree") || holderKey.length !== 32 ||
+        okpThumbprint(encodeB64url(holderKey)) !== p.cnf.jkt) return bindingFailed;
   } catch {
-    return { failure: "holder_binding_failed" };
-  }
-  if (!covers.includes("Pedigree") || holderKey.length !== 32 ||
-      okpThumbprint(encodeB64url(holderKey)) !== p.cnf.jkt) {
-    return { failure: "holder_binding_failed" };
+    return bindingFailed;
   }
   const invalid = { failure: "invocation_invalid" };
-  if (!presentation.invocation) return invalid;
-  if (!coversInvocation) return { failure: "holder_binding_failed" };
-
-  let invocation;
+  let request;
   try {
-    invocation = parseInvocation(presentation.invocation);
+    const compact = presentation.invocation;
+    if (!compact) return invalid;
+    if (!coversInvocation) return bindingFailed;
+
+    const invocation = parseInvocation(compact);
+    request = invocation.payload;
+    if (!validSignature(invocation, holderKey)) return invalid;
+    if (request.iss !== p.client_id || !timingSafeEqual(invocation.leafDigest, sha256(leaf.input)) ||
+        !config.verifierIds.includes(request.aud) || !audience(p.aud).includes(request.aud)) return invalid;
+    if (!atInstant(request, now) || request.exp > p.exp ||
+        request.exp - request.iat > maxLifetime) return invalid;
   } catch {
     return invalid;
   }
-  const request = invocation.payload;
-  if (!validSignature(invocation, holderKey)) return invalid;
-  if (request.iss !== p.client_id || !timingSafeEqual(invocation.leafDigest, sha256(leaf.input)) ||
-      !config.verifierIds.includes(request.aud) || !audience(p.aud).includes(request.aud)) return invalid;
-  if (!atInstant(request, now) || request.exp > p.exp ||
-      request.exp - request.iat > config.maxInvocationLifetimeSeconds) return invalid;
 
-  const replay = config.replay;
-  if (replay?.available !== true || !(replay.seen instanceof Set)) return { failure: "replay_unknown" };
   const replayKey = JSON.stringify([request.aud, p.cnf.jkt, request.jti]);
-  if (replay.seen.has(replayKey)) return { failure: "invocation_replayed" };
-  replay.seen.add(replayKey);
+  const failure = recordInvocation(config, replayKey);
+  if (failure) return { failure };
 
   // Request arguments go directly to JCS. I-JSON parsing applies to the JOSE segments.
   let args;
   try {
-    requireShape(object(presentation.args));
-    args = canonicalize(presentation.args);
+    const suppliedArgs = presentation.args;
+    requireShape(object(suppliedArgs));
+    args = canonicalize(suppliedArgs);
     if (!exactMembers(request.args, ["sha256"]) ||
         !timingSafeEqual(digestBytes(request.args.sha256), sha256(args))) return invalid;
   } catch {
@@ -247,14 +277,35 @@ function invocationCheck(presentation, wpt, config, now, leaf, used) {
   return { request, args };
 }
 
-function decide(payloads, policies, ceiling, request, args) {
-  let lookup;
+function consentFailure(trusted, root, instant) {
   try {
-    lookup = indexDecisions(policies?.decisions);
-    if (!Buffer.from(canonicalize(policies.ceiling)).equals(ceiling)) return unsupported;
+    const answers = trusted?.consent ?? [];
+    for (const id of root.consent_chain) {
+      let active = false;
+      let revoked = false;
+      for (const row of answers) {
+        if (!object(row)) return "status_unknown";
+        if (row.trust_anchor_kid !== root.iss || row.consent_id !== id) continue;
+        const validAt = parseFixtureInstant(row.valid_at);
+        if (!validAt) return "status_unknown";
+        if (validAt.seconds !== instant.seconds || validAt.fraction !== instant.fraction ||
+            validAt.leapSecond !== instant.leapSecond) continue;
+        const value = has(row, "active") ? row.active : undefined;
+        if (value === false) revoked = true;
+        else if (value === true) active = true;
+        else return "status_unknown";
+      }
+      if (revoked) return "revoked";
+      if (!active) return "status_unknown";
+    }
   } catch {
-    return unsupported;
+    return "status_unknown";
   }
+}
+
+function decide(payloads, policies, ceiling, request, args) {
+  const lookup = indexDecisions(policies?.decisions);
+  if (!Buffer.from(canonicalize(policies.ceiling)).equals(ceiling)) return unsupported;
   const leaf = payloads.at(-1);
   const { action, resource } = request;
 
@@ -274,31 +325,50 @@ function decide(payloads, policies, ceiling, request, args) {
   return decision === "permit" ? "permit" : "ceiling_denied";
 }
 
+function readLimit(config, name) {
+  let limit;
+  try {
+    limit = config?.[name];
+  } catch (cause) {
+    throw new TypeError("Cannot read " + name, { cause });
+  }
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    throw new TypeError(name + " must be a positive safe integer");
+  }
+  return limit;
+}
+
 /**
  * Verify one presentation at the supplied instant under the fixture profile.
- * The evaluation instant may be a Date or RFC 3339 text.
+ * The evaluation instant may be RFC 3339 text or a Date-like object with integer milliseconds.
  * Returns the first refusal or permit and the trusted inputs consumed in order.
- * Throws TypeError if any configured limit is missing or invalid.
+ * Throws TypeError if any configured limit is missing, invalid or unreadable.
  * The caller owns config.replay and shares it across applicable presentations.
  */
 export function verify(presentation, trusted, config, at) {
-  for (const name of ["maxTokens", "maxBytes", "maxInvocationLifetimeSeconds"]) {
-    const limit = config?.[name];
-    if (!Number.isSafeInteger(limit) || limit <= 0) throw new TypeError(name + " must be a positive safe integer");
-  }
+  const maxTokens = readLimit(config, "maxTokens");
+  const maxBytes = readLimit(config, "maxBytes");
+  const maxInvocationLifetimeSeconds = readLimit(config, "maxInvocationLifetimeSeconds");
   const trustedInputsUsed = [];
   const result = (outcome) => ({ outcome, trustedInputsUsed });
 
   // 1. Parse every token and enforce limits before signature work.
-  const { chain } = presentation;
-  if (!Array.isArray(chain) || chain.length === 0 || chain.length > config.maxTokens) {
+  const chain = [];
+  try {
+    const suppliedChain = presentation?.chain;
+    if (!Array.isArray(suppliedChain)) return result("malformed");
+    const count = suppliedChain.length;
+    if (!Number.isSafeInteger(count) || count <= 0 || count > maxTokens) return result("malformed");
+    let size = 0;
+    for (let i = 0; i < count; i++) {
+      const compact = suppliedChain[i];
+      if (typeof compact !== "string") return result("malformed");
+      size += Buffer.byteLength(compact);
+      if (size > maxBytes) return result("malformed");
+      chain.push(compact);
+    }
+  } catch {
     return result("malformed");
-  }
-  let size = 0;
-  for (const compact of chain) {
-    if (typeof compact !== "string") return result("malformed");
-    size += Buffer.byteLength(compact);
-    if (size > config.maxBytes) return result("malformed");
   }
   let tokens;
   try {
@@ -346,56 +416,60 @@ export function verify(presentation, trusted, config, at) {
   const mandates = payloads.map((p) => p.mandate?.policy_set);
   const hasMandate = mandates.some(Boolean);
   if (hasMandate) trustedInputsUsed.push("policy_fixture");
-  const widened = attenuation(payloads, mandates, hasMandate ? trusted.policies : undefined);
-  if (widened) return result(widened);
+  try {
+    const widened = attenuation(payloads, mandates, hasMandate ? trusted?.policies : undefined);
+    if (widened) return result(widened);
+  } catch {
+    return result(unsupported);
+  }
 
   // 6. Check the time window and time attenuation of every hop.
-  const fromText = typeof at === "string";
-  const milliseconds = fromText ? undefined : at.getTime();
-  const instant = fromText ? parseFixtureInstant(at) : dateInstant(milliseconds);
+  let instant;
+  try {
+    instant = typeof at === "string" ? parseFixtureInstant(at) : dateInstant(at?.getTime());
+  } catch {
+    return result("expired");
+  }
   if (!instant) return result("expired");
-  const now = fromText ? Number(instant.seconds) + Number("0." + instant.fraction) : milliseconds / 1000;
+  const nanoseconds = Number(instant.fraction.slice(0, 9).padEnd(9, "0"));
+  const now = { seconds: instant.seconds, fraction: nanoseconds / 1e9 };
   if (payloads.some((p, i) => !atInstant(p, now) ||
       (i > 0 && (p.exp > payloads[i - 1].exp || p.iat < payloads[i - 1].iat)))) {
     return result("expired");
   }
 
   // 7. Validate the configured ceiling bytes and check every token's reference.
-  if (!object(config.ceilings)) return result(unsupported);
-  for (const ref of Object.getOwnPropertyNames(config.ceilings)) {
-    const bytes = config.ceilings[ref];
-    if (!types.isUint8Array(bytes) || ref !== "sha256:" + sha256(bytes).toString("hex")) {
-      return result(unsupported);
+  try {
+    const ceilings = config.ceilings;
+    if (!object(ceilings)) return result(unsupported);
+    for (const ref of Object.getOwnPropertyNames(ceilings)) {
+      const bytes = ceilings[ref];
+      if (!types.isUint8Array(bytes) || ref !== "sha256:" + sha256(bytes).toString("hex")) {
+        return result(unsupported);
+      }
     }
+    if (payloads.some((p) => !has(ceilings, p.ceiling_ref))) return result("ceiling_unknown");
+  } catch {
+    return result(unsupported);
   }
-  if (payloads.some((p) => !has(config.ceilings, p.ceiling_ref))) return result("ceiling_unknown");
 
   // 8. Refuse unresolved token status before consulting consent.
   if (payloads.some((p) => has(p, "status"))) return result("status_unknown");
   trustedInputsUsed.push("consent_fixture");
-  for (const id of root.consent_chain) {
-    let active = false;
-    let revoked = false;
-    for (const row of trusted.consent ?? []) {
-      if (row.trust_anchor_kid !== anchorId || row.consent_id !== id) continue;
-      const validAt = parseFixtureInstant(row.valid_at);
-      if (!validAt) return result("status_unknown");
-      if (validAt.seconds !== instant.seconds || validAt.fraction !== instant.fraction ||
-          validAt.leapSecond !== instant.leapSecond) continue;
-      if (row.active === false) revoked = true;
-      if (row.active === true) active = true;
-    }
-    if (revoked) return result("revoked");
-    if (!active) return result("status_unknown");
-  }
+  const status = consentFailure(trusted, root, instant);
+  if (status) return result(status);
 
   // 9. Inspect the leaf's audience.
   const leaf = tokens.at(-1);
-  if (!audience(leaf.payload.aud).some((id) => config.verifierIds.includes(id))) return result("audience_mismatch");
+  try {
+    if (!audience(leaf.payload.aud).some((id) => config.verifierIds.includes(id))) return result("audience_mismatch");
+  } catch {
+    return result("audience_mismatch");
+  }
 
   // 10. Bind the holder and validate the invocation.
   const { failure, request, args } = invocationCheck(
-    presentation, trusted.wpt, config, now, leaf, trustedInputsUsed,
+    presentation, trusted, config, maxInvocationLifetimeSeconds, now, leaf, trustedInputsUsed,
   );
   if (failure) return result(failure);
 
@@ -404,5 +478,9 @@ export function verify(presentation, trusted, config, at) {
     return result("scope_not_granted");
   }
   if (!hasMandate) trustedInputsUsed.push("policy_fixture");
-  return result(decide(payloads, trusted.policies, config.ceilings[leaf.payload.ceiling_ref], request, args));
+  try {
+    return result(decide(payloads, trusted?.policies, config.ceilings[leaf.payload.ceiling_ref], request, args));
+  } catch {
+    return result(unsupported);
+  }
 }
